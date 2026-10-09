@@ -1,0 +1,5002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Holdfast — soldier duel</title>
+  <style>
+:root {
+  --bg: #0a0d12;
+  --panel: #141a24;
+  --panel2: #1c2433;
+  --ink: #e8eef8;
+  --muted: #8b97ab;
+  --red: #e85e5e;
+  --red-dim: #8a3a3a;
+  --black: #7aa2ff;
+  --black-dim: #3a5080;
+  --supply: #ff8a3d;
+  --good: #5dde8a;
+  --bad: #ff6b6b;
+  --guard: #d4a24c;
+  --radius: 8px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "Cascadia Code", Menlo, monospace;
+  --phone-w: 390px;
+  --phone-h: 844px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: #05070b;
+  color: var(--ink); font-family: var(--font);
+  overscroll-behavior: none;
+}
+button {
+  font: inherit; cursor: pointer; border: 1px solid #2e3a50;
+  background: var(--panel2); color: var(--ink); border-radius: 8px;
+  padding: 0.4rem 0.7rem; touch-action: manipulation;
+}
+button:hover { border-color: #5a6f96; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary { background: linear-gradient(180deg, #3a5a8a, #2a4068); border-color: #6a8ec0; }
+button.danger { background: #4a2222; border-color: #a05050; }
+
+#app {
+  width: min(100vw, var(--phone-w));
+  height: 100dvh;
+  max-height: var(--phone-h);
+  margin: 0 auto;
+  display: flex; flex-direction: column;
+  background: radial-gradient(500px 280px at 50% 0%, #1a2233 0%, var(--bg) 55%);
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+}
+@media (min-height: 900px) and (min-width: 420px) {
+  #app {
+    margin-top: calc((100dvh - var(--phone-h)) / 2);
+    height: var(--phone-h);
+    border-radius: 24px;
+    box-shadow: 0 0 0 2px #222a38, 0 20px 60px rgba(0,0,0,0.55);
+  }
+}
+
+.topbar {
+  flex: 0 0 auto;
+  display: flex; gap: 0.4rem; align-items: center;
+  justify-content: space-between; padding: 0.4rem 0.55rem;
+  border-bottom: 1px solid #1e2738;
+  min-height: 36px;
+  position: relative;
+  z-index: 60;
+  background: inherit;
+}
+.brand h1 {
+  margin: 0; font-size: 0.95rem; letter-spacing: 0.04em;
+  background: linear-gradient(90deg, var(--red), var(--black));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.brand .tag { display: none; }
+.topbar .tag { color: var(--muted); font-size: 0.65rem; }
+.topbar button { padding: 0.28rem 0.5rem; font-size: 0.75rem; }
+.topbar-actions { display: flex; gap: 0.55rem; align-items: center; }
+.topbar-actions .btn-quiet { opacity: 0.85; }
+.modal { overscroll-behavior: contain; }
+
+.screen { display: none; flex: 1; min-height: 0; flex-direction: column; overflow: hidden; }
+.screen.active { display: flex; }
+
+#screen-setup {
+  overflow-y: auto; padding: 0.75rem; -webkit-overflow-scrolling: touch;
+}
+#screen-setup > p { color: var(--muted); font-size: 0.82rem; line-height: 1.4; margin: 0 0 0.75rem; }
+.setup-grid { display: grid; gap: 0.65rem; grid-template-columns: 1fr; }
+.faction-card {
+  background: var(--panel); border: 1px solid #2a3548; border-radius: var(--radius);
+  padding: 0.75rem; cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+}
+.faction-card:active { transform: scale(0.98); }
+.faction-card.selected { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); }
+.faction-card.red h2 { color: var(--red); margin: 0 0 0.3rem; font-size: 1.05rem; }
+.faction-card.black h2 { color: var(--black); margin: 0 0 0.3rem; font-size: 1.05rem; }
+.faction-card p { color: var(--muted); font-size: 0.8rem; line-height: 1.35; margin: 0; }
+.help-box, .rules-box {
+  background: var(--panel); border: 1px solid #2a3548; border-radius: var(--radius);
+  padding: 0.75rem; margin-top: 0.75rem; color: var(--muted); font-size: 0.8rem; line-height: 1.4;
+}
+.help-box h3 { color: var(--ink); margin: 0 0 0.35rem; font-size: 0.9rem; }
+.help-box ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+.help-box li { margin: 0.2rem 0; }
+
+#screen-game { overflow: hidden; position: relative; }
+#stage {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  padding: 0.3rem 0.4rem 0.35rem; gap: 0.25rem; overflow: hidden;
+}
+
+.hero-bar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.35rem; padding: 0.35rem 0.55rem;
+  background: var(--panel); border: 1px solid #2a3548; border-radius: 8px;
+  font-size: 0.72rem; min-height: 44px;
+}
+.hero-bar.active-turn { border-color: var(--good); box-shadow: 0 0 10px rgba(93,222,138,0.25); }
+.hero-bar.target-hl {
+  outline: 2px solid var(--supply) !important;
+  box-shadow: 0 0 14px rgba(255,138,61,0.55) !important;
+  cursor: pointer;
+}
+.hero-bar .name { font-weight: 650; white-space: nowrap; }
+.hero-bar.red .name { color: var(--red); }
+.hero-bar.black .name { color: var(--black); }
+.hero-bar .meters { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: flex-end; align-items: center; }
+.hero-bar .meters span {
+  background: var(--panel2); padding: 0.15rem 0.4rem; border-radius: 5px; font-size: 0.7rem;
+}
+.hero-bar .hp {
+  color: var(--bad); font-weight: 800; font-size: 1.15rem; font-family: var(--mono);
+  padding: 0.1rem 0.45rem; background: rgba(255,80,80,0.12); border: 1px solid rgba(255,107,107,0.35);
+}
+.hero-bar .hp.flash { animation: hp-flash 0.45s ease; }
+@keyframes hp-flash {
+  0%, 100% { background: rgba(255,80,80,0.12); }
+  40% { background: rgba(255,80,80,0.55); transform: scale(1.08); }
+}
+.hero-bar .supply { color: var(--supply); font-weight: 700; }
+
+.board {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.field {
+  flex: 1; min-height: 0;
+  background: var(--panel); border-radius: 8px; border: 1px solid #2a3548;
+  padding: 0.25rem; display: flex; flex-direction: column; overflow: hidden;
+}
+.field.enemy-field { border-top: 2px solid var(--bad); }
+.field.friend-field { border-top: 2px solid var(--good); }
+.field h3 {
+  margin: 0 0 0.15rem; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--muted); display: flex; justify-content: space-between;
+}
+.field-row {
+  flex: 1; min-height: 0;
+  display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 0.3rem;
+  padding: 0.25rem; border-radius: 6px; position: relative;
+}
+.field-row.enemy { background: rgba(255,80,80,0.07); }
+.field-row.friend { background: rgba(80,200,120,0.07); }
+.field-row.drop-legal {
+  outline: 2px dashed var(--good);
+  background: rgba(93,222,138,0.18) !important;
+  box-shadow: inset 0 0 16px rgba(93,222,138,0.2);
+}
+.field-row.drop-illegal { outline: 1px solid rgba(255,107,107,0.35); }
+.field-empty {
+  color: var(--muted); font-size: 0.65rem; opacity: 0.55; pointer-events: none;
+}
+
+.card {
+  width: 64px; height: 88px; border-radius: 7px; padding: 0;
+  background: linear-gradient(160deg, #243044, #171d28); border: 1px solid #3a4a66;
+  font-size: 0.58rem; display: flex; flex-direction: column;
+  position: relative; user-select: none; cursor: default;
+  overflow: hidden; touch-action: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card.hand-card {
+  width: 68px; height: 96px; cursor: grab; flex-shrink: 0;
+}
+.card.hand-card:active { cursor: grabbing; }
+.card.hand-card.playable { outline: 1.5px dashed var(--supply); outline-offset: 1px; }
+.card.hand-card.selected,
+.card.hand-card:hover { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); z-index: 2; }
+.card.can-attack {
+  box-shadow: 0 0 0 2px var(--red), 0 0 10px rgba(232,94,94,0.45);
+  cursor: pointer; animation: pulse-atk 1.4s ease-in-out infinite;
+}
+@keyframes pulse-atk {
+  0%, 100% { box-shadow: 0 0 0 2px var(--red), 0 0 6px rgba(232,94,94,0.3); }
+  50% { box-shadow: 0 0 0 2px var(--red), 0 0 14px rgba(232,94,94,0.65); }
+}
+.card.red { border-color: var(--red-dim); }
+.card.black { border-color: var(--black-dim); }
+.card.guard-card { border-color: var(--guard); }
+.card .art {
+  height: 42%; flex: 0 0 auto; position: relative; overflow: hidden;
+  background: #0e121a;
+}
+.card .art svg { width: 100%; height: 100%; display: block; }
+.card .body {
+  flex: 1; min-height: 0; padding: 0.15rem 0.22rem 0.2rem;
+  display: flex; flex-direction: column; gap: 0.05rem;
+}
+.card .cname {
+  font-weight: 700; font-size: 0.58rem; line-height: 1.1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.card .ctype {
+  font-size: 0.48rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted);
+}
+.card .ctext {
+  color: #a8b4c8; flex: 1; line-height: 1.15; font-size: 0.48rem;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.card.hand-card .ctext { -webkit-line-clamp: 3; font-size: 0.5rem; }
+.card .stats {
+  display: flex; justify-content: space-between; align-items: center;
+  font-family: var(--mono); font-weight: 800; font-size: 0.7rem; margin-top: auto;
+}
+.card .cost-pip {
+  position: absolute; top: 2px; left: 2px; z-index: 2;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--supply); color: #1a1008; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.62rem; border: 1.5px solid #1a1008;
+}
+.card .guard-pip {
+  position: absolute; top: 2px; right: 2px; z-index: 2;
+  min-width: 14px; height: 14px; border-radius: 7px;
+  background: var(--guard); color: #1a1008; font-size: 0.48rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; padding: 0 3px;
+}
+.card.target-hl {
+  outline: 2px solid var(--supply) !important;
+  box-shadow: 0 0 12px rgba(255,138,61,0.5) !important;
+  cursor: pointer;
+}
+.card.dying {
+  animation: death-fade 0.4s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes death-fade {
+  to { opacity: 0; transform: scale(0.7) rotate(8deg); }
+}
+
+.dock {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.35rem; align-items: end;
+  padding: 0.25rem 0 0;
+  min-height: 110px;
+}
+.hand-area {
+  background: rgba(20,26,36,0.9); border: 1px solid #2a3548; border-radius: 8px;
+  padding: 0.25rem 0.3rem; overflow: hidden; min-width: 0;
+}
+.hand-area .hand-label { font-size: 0.58rem; color: var(--muted); margin-bottom: 0.15rem; }
+.hand-row {
+  display: flex; gap: 0.2rem; justify-content: center; align-items: flex-end;
+  min-height: 96px; position: relative;
+}
+.hand-row .card.hand-card {
+  margin-left: -10px;
+  transform-origin: bottom center;
+}
+.hand-row .card.hand-card:first-child { margin-left: 0; }
+.hand-row .card.hand-card:nth-child(1) { transform: rotate(-8deg) translateY(4px); }
+.hand-row .card.hand-card:nth-child(2) { transform: rotate(-4deg) translateY(1px); }
+.hand-row .card.hand-card:nth-child(3) { transform: rotate(0deg); }
+.hand-row .card.hand-card:nth-child(4) { transform: rotate(4deg) translateY(1px); }
+.hand-row .card.hand-card:nth-child(5) { transform: rotate(8deg) translateY(4px); }
+.hand-row .card.hand-card:nth-child(6) { transform: rotate(10deg) translateY(6px); }
+.hand-row .card.hand-card:nth-child(7) { transform: rotate(12deg) translateY(8px); }
+.hand-row .card.hand-card:hover,
+.hand-row .card.hand-card.selected {
+  transform: translateY(-12px) scale(1.06) rotate(0deg) !important;
+  z-index: 5;
+}
+
+.deck-pile {
+  width: 54px; height: 78px; position: relative;
+  border-radius: 7px; cursor: default; flex-shrink: 0;
+}
+.deck-pile .deck-back {
+  position: absolute; inset: 0; border-radius: 7px;
+  background: linear-gradient(145deg, #2a3550, #121820);
+  border: 1.5px solid #4a5a78;
+  box-shadow: 0 1px 0 #3a4a66, 0 2px 0 #1a2230, 0 3px 0 #3a4a66, 0 4px 8px rgba(0,0,0,0.4);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.15rem;
+}
+.deck-pile .deck-back::before {
+  content: ""; width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid rgba(232,94,94,0.55);
+  background: radial-gradient(circle at 40% 35%, rgba(122,162,255,0.35), transparent 60%);
+}
+.deck-pile .deck-count {
+  font-family: var(--mono); font-weight: 800; font-size: 0.75rem; color: var(--ink);
+}
+.deck-pile .deck-label { font-size: 0.5rem; color: var(--muted); text-transform: uppercase; }
+
+.dock-actions {
+  display: flex; flex-direction: column; gap: 0.3rem; align-items: stretch;
+  width: 72px;
+}
+.dock-actions #btn-end { padding: 0.55rem 0.4rem; font-size: 0.72rem; font-weight: 650; }
+.hint {
+  color: var(--muted); font-size: 0.58rem; line-height: 1.2; text-align: center;
+  max-height: 2.4em; overflow: hidden;
+}
+
+.preview-strip {
+  flex: 0 0 auto;
+  min-height: 22px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem; font-weight: 650;
+  color: var(--supply);
+  text-align: center;
+  background: rgba(255,138,61,0.08);
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+.preview-strip.active {
+  border-color: rgba(255,138,61,0.4);
+  color: #ffd0a0;
+}
+
+.log-box { display: none; }
+
+.drag-ghost {
+  position: fixed; z-index: 100; pointer-events: none;
+  width: 72px; height: 100px;
+  transform: translate(-50%, -60%) scale(1.08);
+  opacity: 0.95; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.55));
+  transition: none;
+}
+.fly-card {
+  position: fixed; z-index: 90; pointer-events: none;
+  transition: left 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+              top 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 0.38s ease, opacity 0.2s ease;
+}
+.card.play-in {
+  animation: play-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes play-in {
+  from { transform: scale(0.6) translateY(30px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+.card.lunge {
+  animation: lunge 0.28s ease-out;
+  z-index: 8;
+}
+@keyframes lunge {
+  0% { transform: translate(0, 0); }
+  40% { transform: translate(var(--lx, 0), var(--ly, -18px)) scale(1.05); }
+  100% { transform: translate(0, 0); }
+}
+.impact-flash {
+  position: absolute; inset: -4px; border-radius: 10px; pointer-events: none; z-index: 9;
+  background: radial-gradient(circle, rgba(255,200,80,0.7), transparent 70%);
+  animation: impact 0.35s ease-out forwards;
+}
+@keyframes impact {
+  from { opacity: 1; transform: scale(0.6); }
+  to { opacity: 0; transform: scale(1.4); }
+}
+.dmg-floater {
+  position: absolute; z-index: 20; pointer-events: none;
+  font-family: var(--mono); font-weight: 800; font-size: 1.1rem;
+  color: #ff6b6b; text-shadow: 0 1px 3px #000;
+  animation: float-up 0.7s ease-out forwards;
+}
+@keyframes float-up {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-28px) scale(1.2); }
+}
+.shake { animation: shake 0.3s ease-in-out; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.turn-banner {
+  position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%);
+  z-index: 50; pointer-events: none;
+  padding: 0.55rem 1.2rem; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(40,70,50,0.95), rgba(20,35,28,0.95));
+  border: 1px solid var(--good);
+  box-shadow: 0 0 30px rgba(93,222,138,0.45), 0 8px 24px rgba(0,0,0,0.5);
+  font-weight: 800; font-size: 1rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--good);
+  animation: banner-in 1.1s ease-out forwards;
+  white-space: nowrap;
+}
+.turn-banner.opp {
+  background: linear-gradient(180deg, rgba(70,40,40,0.95), rgba(35,20,20,0.95));
+  border-color: var(--red); color: #ffb0b0;
+  box-shadow: 0 0 30px rgba(232,94,94,0.4), 0 8px 24px rgba(0,0,0,0.5);
+}
+@keyframes banner-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(0.95); }
+}
+
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none;
+  align-items: flex-end; justify-content: center; z-index: 50; padding: 0.75rem;
+}
+.modal.open { display: flex; }
+.modal .sheet {
+  background: var(--panel); border: 1px solid #3a4a66; border-radius: 14px 14px 10px 10px;
+  padding: 1rem; max-width: 390px; width: 100%; max-height: 70vh; overflow: auto;
+}
+.modal .sheet h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+.target-list { display: flex; flex-direction: column; gap: 0.4rem; margin: 0.5rem 0 0.75rem; }
+.target-list button { text-align: left; padding: 0.65rem 0.75rem; }
+.target-list button .preview-line { display: block; color: var(--supply); font-size: 0.72rem; margin-top: 0.15rem; }
+.dragging-source { opacity: 0.35; }
+.modal .sheet .sheet-actions { position: sticky; bottom: 0; padding-top: 0.5rem; background: var(--panel); }
+
+/* —— Artwork shells —— */
+.title-art { margin: 0 0 0.5rem; border-radius: 10px; overflow: hidden; border: 1px solid #2a3548; }
+.title-art svg { display: block; width: 100%; height: auto; }
+.faction-emblem { width: 48px; height: 48px; margin-bottom: 0.35rem; }
+.faction-emblem svg { width: 48px; height: 48px; display: block; }
+.board-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-size: cover; background-position: center; opacity: 0.55;
+}
+#screen-game { position: relative; }
+#stage { position: relative; z-index: 1; }
+.hero-bar { display: flex; gap: 0.4rem; align-items: center; }
+.hero-portrait { width: 56px; height: 34px; flex: 0 0 auto; }
+.hero-portrait svg { width: 56px; height: 34px; display: block; border-radius: 6px; }
+.hero-meta { flex: 1; min-width: 0; }
+
+/* —— Rare / flashy cards —— */
+.card.rare-card { box-shadow: 0 0 10px rgba(255,193,74,0.45), inset 0 0 0 1px rgba(255,193,74,0.35); }
+.card.hand-card.playable { animation: card-pulse 1.6s ease-in-out infinite; }
+.card.hand-card:hover, .card.hand-card:active {
+  transform: translateY(-8px) scale(1.04); z-index: 5;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.45), 0 0 12px rgba(110,200,255,0.35);
+}
+@keyframes card-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,138,61,0.0); }
+  50% { box-shadow: 0 0 12px 2px rgba(255,138,61,0.45); }
+}
+.slam-in { animation: slam 0.42s cubic-bezier(.2,1.4,.3,1) both; }
+@keyframes slam {
+  0% { transform: translateY(-40px) scale(1.25); opacity: 0; filter: brightness(1.6); }
+  60% { transform: translateY(4px) scale(0.98); opacity: 1; }
+  100% { transform: none; filter: none; }
+}
+.lunge { transition: transform 0.14s ease-out; transform: translate(var(--lx,0), var(--ly,-24px)) scale(1.05); z-index: 6; }
+.shake-hard { animation: shake-hard 0.38s linear; }
+@keyframes shake-hard {
+  0%,100% { transform: translate(0,0); }
+  20% { transform: translate(-3px,2px); }
+  40% { transform: translate(3px,-2px); }
+  60% { transform: translate(-2px,-1px); }
+  80% { transform: translate(2px,1px); }
+}
+.shatter { animation: shatter 0.45s ease-in forwards; pointer-events: none; }
+@keyframes shatter {
+  0% { transform: scale(1); opacity: 1; filter: brightness(1.4); }
+  100% { transform: scale(1.3) rotate(8deg); opacity: 0; filter: brightness(2); }
+}
+
+/* —— FX layer —— */
+#fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 80; overflow: hidden; }
+.fx-float {
+  position: fixed; font-weight: 800; font-size: 1.25rem; animation: float-up 0.85s ease-out forwards;
+  text-shadow: 0 2px 4px #000; z-index: 81;
+}
+.fx-float.dmg { color: #ff6b5a; }
+.fx-float.heal { color: #5dde8a; }
+@keyframes float-up {
+  0% { opacity: 1; transform: translate(-50%,0) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%,-36px) scale(1); }
+}
+.fx-particle {
+  position: fixed; width: 6px; height: 6px; border-radius: 50%;
+  animation: particle 0.65s ease-out forwards; z-index: 81;
+}
+@keyframes particle {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.2); }
+}
+.fx-trail {
+  position: fixed; height: 4px; transform-origin: left center; border-radius: 2px;
+  animation: trail 0.35s ease-out forwards; z-index: 81;
+}
+@keyframes trail { 0% { opacity: .9; } 100% { opacity: 0; } }
+.fx-result {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.55); z-index: 85; animation: result-in 2s ease-out forwards;
+  pointer-events: none;
+}
+.fx-result span {
+  font-size: 2.4rem; font-weight: 900; letter-spacing: 0.12em;
+  text-shadow: 0 0 24px currentColor, 0 4px 12px #000;
+}
+.fx-result.win span { color: #ffc14a; }
+.fx-result.lose span { color: #ff6b5a; }
+@keyframes result-in {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* —— Meta / lobby —— */
+.lobby-bar { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.5rem 0; }
+.lobby-bar button { font-size: 0.72rem; padding: 0.3rem 0.5rem; }
+.lobby-panel {
+  display: none; background: var(--panel); border: 1px solid #2a3548; border-radius: 10px;
+  padding: 0.65rem; margin: 0.5rem 0; max-height: 42vh; overflow: auto;
+}
+.lobby-panel.open { display: block; }
+.leader-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.leader-card {
+  border: 1px solid #2a3548; border-radius: 8px; padding: 0.4rem; cursor: pointer; background: #121820;
+}
+.leader-card.selected { border-color: var(--good); box-shadow: 0 0 0 1px var(--good); }
+.leader-card h4 { margin: 0.2rem 0; font-size: 0.82rem; }
+.leader-card p { margin: 0; font-size: 0.68rem; color: var(--muted); line-height: 1.25; }
+.xp-bar { height: 6px; background: #1a2230; border-radius: 3px; margin-top: 0.3rem; overflow: hidden; }
+.xp-bar > span { display: block; height: 100%; background: linear-gradient(90deg,#6ec8ff,#ffc14a); }
+.frame-bronze { box-shadow: inset 0 0 0 2px #a67c52; }
+.frame-silver { box-shadow: inset 0 0 0 2px #c0c8d8; }
+.frame-gold { box-shadow: inset 0 0 0 2px #ffc14a; }
+.frame-legendary { box-shadow: inset 0 0 0 2px #c46bff, 0 0 10px rgba(196,107,255,0.4); }
+.pack-open {
+  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,0.8);
+  display: none; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 1rem;
+}
+.pack-open.open { display: flex; }
+.pack-card-reveal {
+  width: 110px; min-height: 140px; border-radius: 8px; padding: 0.4rem; text-align: center;
+  background: #1a2230; border: 2px solid #445; animation: pack-pop 0.45s ease-out;
+}
+.pack-card-reveal.rare { border-color: #6ec8ff; box-shadow: 0 0 16px rgba(110,200,255,0.5); }
+.pack-card-reveal.epic { border-color: #c46bff; box-shadow: 0 0 16px rgba(196,107,255,0.55); }
+.pack-card-reveal.legendary { border-color: #ffc14a; box-shadow: 0 0 20px rgba(255,193,74,0.65); }
+@keyframes pack-pop {
+  0% { transform: scale(0.4) rotate(-8deg); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.handoff {
+  position: fixed; inset: 0; z-index: 88; background: #0a0d12; display: none;
+  align-items: center; justify-content: center; flex-direction: column; gap: 0.75rem; text-align: center;
+  padding: 1.5rem;
+}
+.handoff.open { display: flex; }
+.power-btn {
+  margin-left: 0.35rem; font-size: 0.7rem; padding: 0.25rem 0.45rem;
+  border-color: #ffc14a; color: #ffc14a;
+}
+.power-btn:disabled { opacity: 0.4; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card.hand-card.playable, .slam-in, .lunge, .shake-hard, .shatter,
+  .fx-float, .fx-particle, .fx-trail, .fx-result, .pack-card-reveal, .turn-banner {
+    animation: none !important; transition: none !important;
+  }
+}
+
+/* —— Ability modal / co-op / extra FX —— */
+#ability-modal { position:fixed; inset:0; z-index:80; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.72); padding:1rem; }
+#ability-modal.open, #ability-modal:not([hidden]).open { display:flex; }
+#ability-modal .modal-card { background:#121820; border:1px solid #3a4a60; border-radius:12px; padding:1rem; max-width:360px; width:100%; }
+.ability-choices { display:flex; flex-direction:column; gap:.5rem; margin:0.75rem 0; }
+.ability-choices button { text-align:left; padding:.65rem .75rem; border-radius:8px; border:1px solid #3a4a60; background:#1a2230; color:#efe6d4; }
+.ability-choices button:active, .ability-choices button:hover { border-color:#ffc14a; }
+.ally-field { border-color: rgba(110,200,255,.25); }
+.ally-bar { opacity: .95; }
+.fx-hitflash { position:fixed; width:40px; height:40px; border-radius:50%; background:radial-gradient(circle,#fff,transparent 70%); pointer-events:none; z-index:70; animation: hitflash .28s ease-out forwards; }
+@keyframes hitflash { from{opacity:1;transform:scale(.6)} to{opacity:0;transform:scale(1.8)} }
+.fx-turn-banner { position:fixed; left:50%; top:38%; transform:translate(-50%,-50%) scale(.9); z-index:75; padding:.55rem 1.2rem; border-radius:999px; background:linear-gradient(90deg,#ff6b5a,#ffc14a); color:#1a0a08; font-weight:800; letter-spacing:.04em; pointer-events:none; animation: turnpop 1.1s ease-out forwards; }
+.fx-turn-banner.opp { background:linear-gradient(90deg,#2a5088,#6ec8ff); color:#041018; }
+@keyframes turnpop { 0%{opacity:0;transform:translate(-50%,-50%) scale(.7)} 20%{opacity:1;transform:translate(-50%,-50%) scale(1)} 80%{opacity:1} 100%{opacity:0;transform:translate(-50%,-60%) scale(1.05)} }
+.legendary-glow { box-shadow: 0 0 18px 4px rgba(196,107,255,.75), 0 0 4px #ffc14a !important; animation: legpulse 1.2s ease-in-out; }
+@keyframes legpulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.35)} }
+.fx-pack-ring { position:fixed; width:80px; height:80px; border-radius:50%; border:3px solid #ffc14a; pointer-events:none; z-index:70; animation: packring .9s ease-out forwards; }
+.fx-pack-ring.epic { border-color:#c46bff; }
+@keyframes packring { from{opacity:1;transform:scale(.5)} to{opacity:0;transform:scale(1.8)} }
+.fx-result { position:fixed; inset:0; z-index:90; display:flex; align-items:center; justify-content:center; pointer-events:none; background:rgba(0,0,0,.45); animation: resultin .35s ease-out; }
+.fx-result-inner { text-align:center; padding:1.5rem 2rem; border-radius:16px; border:2px solid #ffc14a; background:rgba(10,14,20,.92); }
+.fx-result.win .fx-result-title { color:#ffc14a; font-size:2.2rem; font-weight:900; letter-spacing:.12em; }
+.fx-result.lose .fx-result-title { color:#ff6b5a; font-size:2.2rem; font-weight:900; letter-spacing:.12em; }
+.fx-result-sub { display:block; margin-top:.4rem; color:#9aa8c0; }
+@keyframes resultin { from{opacity:0} to{opacity:1} }
+.hand-hidden .hand-row .card { filter: blur(10px) brightness(.4); pointer-events:none; }
+.portrait-frame { width:52px; height:52px; border-radius:10px; overflow:hidden; flex-shrink:0; }
+.portrait-frame img, .portrait-frame svg { width:100%; height:100%; display:block; }
+
+.card.legendary-card { box-shadow: 0 0 12px rgba(196,107,255,.55), inset 0 0 0 1px #c46bff; }
+.title-art { width:100%; max-width:360px; margin:0 auto .5rem; }
+.title-art svg { width:100%; height:auto; display:block; border-radius:12px; }
+.pack-wrap svg { width:100%; height:auto; }
+.leader-grid .portrait-frame { width:72px; height:72px; margin:0 auto .35rem; }
+.leader-grid .portrait-frame svg { width:100%; height:100%; }
+
+</style>
+</head>
+<body>
+  <div id="app">
+    <div class="topbar">
+      <div class="brand">
+        <h1>Holdfast</h1>
+        <div class="tag">Red Banner · Black Ops</div>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="btn-mute" class="btn-quiet" aria-pressed="false">Mute</button>
+        <button type="button" id="btn-new">New game</button>
+        <button type="button" id="btn-help" class="btn-quiet">Rules</button>
+        <span id="seed-label" class="tag"></span>
+      </div>
+    </div>
+
+    <section id="screen-setup" class="screen active">
+      <div id="title-art" class="title-art" aria-hidden="true"></div>
+      <p>
+        1v1 soldier card duel. Reduce the enemy commander to <strong>0 HP</strong> to win.
+        Play vs a bot on a phone-sized stage. Choose your side:
+      </p>
+      <div class="setup-grid">
+        <div class="faction-card red" data-faction="red" role="button" tabindex="0">
+          <div class="faction-emblem" aria-hidden="true"></div>
+          <h2>Red Banner</h2>
+          <p>Durable infantry, Guards, heals, and midrange pressure. Hold the line, then grind them down.</p>
+        </div>
+        <div class="faction-card black" data-faction="black" role="button" tabindex="0">
+          <div class="faction-emblem" aria-hidden="true"></div>
+          <h2>Black Ops</h2>
+          <p>Aggressive strikers, pings, draw, and burst Orders. Race the enemy commander.</p>
+        </div>
+      </div>
+      <div class="lobby-bar">
+        <button type="button" id="btn-lobby-leaders">Leaders</button>
+        <button type="button" id="btn-lobby-mode">Mode</button>
+        <button type="button" id="btn-lobby-packs">Packs</button>
+        <button type="button" id="btn-lobby-collection">Collection</button>
+        <button type="button" id="btn-lobby-export">Save code</button>
+      </div>
+      <div id="lobby-leaders" class="lobby-panel"></div>
+      <div id="lobby-mode" class="lobby-panel">
+        <label>Mode
+          <select id="sel-mode">
+            <option value="ai">vs AI</option>
+            <option value="hotseat">Pass-and-play (PvP)</option>
+            <option value="raid">Raid solo (PvE)</option>
+            <option value="coop">Co-op raid (you + AI ally)</option>
+            <option value="coop_hotseat">Co-op hotseat (2 humans vs boss)</option>
+          </select>
+        </label>
+        <label style="margin-left:0.5rem">AI
+          <select id="sel-diff">
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+          </select>
+        </label>
+        <p class="tag" style="margin:0.4rem 0 0">Co-op = you + ally vs 30 HP Siege Titan. Hotseat modes hide hands between turns.</p>
+      </div>
+      <div id="lobby-packs" class="lobby-panel"></div>
+      <div id="lobby-collection" class="lobby-panel"></div>
+      <p style="margin-top:0.75rem">
+        <button type="button" class="primary" id="btn-start">Start duel</button>
+        <button type="button" id="btn-power" class="power-btn" title="Hero power" style="display:none">Power</button>
+      </p>
+      <div class="help-box" id="iphone-open-note">
+        <h3>iPhone / OneDrive</h3>
+        OneDrive and SharePoint links do not run this game in the browser (Microsoft blocks HTML apps).
+        Download <code>holdfast-full.html</code>, open Files, tap the file, then Share → Open in Safari. Tap once to enable sound.
+      </div>
+      <div class="help-box">
+        <h3>How to play</h3>
+        <ul>
+          <li>Both commanders start at <strong>20 HP</strong>. Drop theirs to 0.</li>
+          <li><strong>Supply</strong> rises by 1 each turn (max 10) and refills. Spend it to play cards.</li>
+          <li>Deploy <strong>Soldiers</strong> (max 5). They cannot attack the turn they arrive. <strong>Orders</strong> resolve instantly.</li>
+          <li>Attack enemy soldiers or the commander. If they have a <strong>Guard</strong>, you must hit a Guard first.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="screen-game" class="screen">
+      <div id="board-bg" class="board-bg" aria-hidden="true"></div>
+      <div id="stage">
+        <div id="hero-opp" class="hero-bar"></div>
+
+        <div class="board">
+          <div class="field enemy-field" id="field-enemy">
+            <h3><span>Enemy field</span><span class="sub">max 5</span></h3>
+            <div class="field-row enemy" data-drop="enemy" id="row-enemy"></div>
+          </div>
+          <div class="field ally-field" id="field-ally" hidden>
+            <h3><span id="ally-field-label">Ally field</span><span class="sub">co-op</span></h3>
+            <div class="field-row ally" id="row-ally"></div>
+          </div>
+          <div id="hero-ally" class="hero-bar ally-bar" hidden></div>
+          <div class="field friend-field" id="field-friend">
+            <h3><span id="friend-field-label">Your field</span><span class="sub">drop here</span></h3>
+            <div class="field-row friend" data-drop="friend" id="row-friend"></div>
+          </div>
+        </div>
+
+        <div id="preview-strip" class="preview-strip" aria-live="polite"></div>
+
+        <div id="hero-you" class="hero-bar"></div>
+
+        <div class="dock">
+          <div class="hand-area">
+            <div class="hand-label">Hand</div>
+            <div class="hand-row" id="hand"></div>
+          </div>
+          <div class="deck-pile" id="deck-pile" title="Your deck">
+            <div class="deck-back">
+              <span class="deck-count" id="deck-count">0</span>
+              <span class="deck-label">Deck</span>
+            </div>
+          </div>
+          <div class="dock-actions">
+            <button type="button" id="btn-power-game" class="power-btn">Power</button>
+            <button type="button" class="primary" id="btn-end">End turn</button>
+            <div class="hint" id="hint"></div>
+          </div>
+        </div>
+      </div>
+      <div class="log-box" id="log"></div>
+    </section>
+
+    <div class="modal" id="modal-target">
+    <div class="sheet">
+      <h2 id="modal-title">Choose</h2>
+      <div class="target-list" id="target-list"></div>
+      <button type="button" id="modal-cancel">Cancel</button>
+    </div>
+  </div>
+    <div class="modal" id="modal-help">
+    <div class="sheet" style="max-height:80vh; overflow:auto">
+      <h2>Holdfast rules</h2>
+      <div class="rules-box" style="border:none;padding:0;margin:0">
+        <p><strong>Goal:</strong> Reduce the enemy commander to 0 HP. That is the only win condition.</p>
+        <p><strong>Supply:</strong> Capacity rises by 1 each turn (max 10) and refills. First turn starts at 1. Skip draw on your very first turn only.</p>
+        <p><strong>Soldiers:</strong> Deploy to your single field row (max 5). Summoning sickness — cannot attack the turn played. Wake at the start of your turn.</p>
+        <p><strong>Orders:</strong> Instant effects (damage, heal, draw, buff). Then discarded.</p>
+        <p><strong>Guard:</strong> If any enemy Guard is on the field, you must attack a Guard before other soldiers or the commander.</p>
+        <p><strong>Combat:</strong> Soldiers deal Attack to each other. Destroy at 0 HP. Direct attack deals Attack to the enemy commander.</p>
+        <p><strong>Fatigue:</strong> Empty deck draw deals escalating damage to your commander.</p>
+        <p><strong>Controls:</strong> Drag a playable card onto your field (or tap). Tap a glowing soldier to attack — preview shows the outcome before you commit.</p>
+      </div>
+      <div class="sheet-actions"><button type="button" class="primary" id="btn-help-close">Close</button></div>
+    </div>
+  </div>
+
+  <div id="fx-layer" aria-hidden="true"></div>
+  <div id="pack-open" class="pack-open" aria-live="polite"></div>
+  <div id="ability-modal" class="modal" hidden>
+    <div class="modal-card">
+      <h2 id="ability-title">Choose ability</h2>
+      <p id="ability-blurb" class="tag"></p>
+      <div id="ability-choices" class="ability-choices"></div>
+      <button type="button" id="ability-cancel">Cancel</button>
+    </div>
+  </div>
+  <div id="handoff" class="handoff"><h2>Pass the device</h2><p id="handoff-text">Next player</p><button type="button" class="primary" id="btn-handoff">Ready</button></div>
+  </div>
+
+  <script>
+/**
+ * Holdfast — card definitions (original soldier IP)
+ * Factions: Red Banner | Black Ops
+ * Types: soldier | order
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.HoldfastCards = factory();
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  /** @typedef {{id:string, name:string, faction:'red'|'black'|'neutral', type:'soldier'|'order', cost:number, attack?:number, health?:number, text:string, keywords?:string[], effect?:string}} CardDef */
+
+  /** @type {CardDef[]} */
+  const DEFS = [
+    // —— Neutrals ——
+    { id: "n_scout", name: "Patrol Scout", faction: "neutral", type: "soldier", cost: 1, attack: 1, health: 2, text: "Eyes on the line.", effect: "none" },
+    { id: "n_runner", name: "Dispatch Runner", faction: "neutral", type: "soldier", cost: 2, attack: 2, health: 2, text: "Battlecry: Draw 1.", effect: "bc_draw_1", keywords: ["battlecry"] },
+    { id: "n_medic", name: "Field Medic", faction: "neutral", type: "soldier", cost: 2, attack: 1, health: 3, text: "Battlecry: Heal your commander 2.", effect: "bc_heal_2", keywords: ["battlecry"] },
+    { id: "n_supply", name: "Supply Drop", faction: "neutral", type: "order", cost: 1, text: "Draw a card.", effect: "draw_1" },
+    { id: "n_shot", name: "Precision Shot", faction: "neutral", type: "order", cost: 2, text: "Deal 2 damage to an enemy soldier.", effect: "damage_enemy_soldier_2" },
+    { id: "n_rally", name: "Rally Cry", faction: "neutral", type: "order", cost: 3, text: "Give all friendly soldiers +1 Attack.", effect: "buff_all_friend_1_0" },
+    { id: "n_frag", name: "Frag Charge", faction: "neutral", type: "order", cost: 3, text: "Deal 1 damage to all enemy soldiers.", effect: "damage_all_enemy_1" },
+
+    // —— Red Banner (durable, Guards, heals, midrange) ——
+    { id: "rb_rifle", name: "Rifle Squad", faction: "red", type: "soldier", cost: 1, attack: 1, health: 3, text: "Steady fire.", effect: "none" },
+    { id: "rb_aid", name: "First Aid", faction: "red", type: "order", cost: 1, text: "Heal your commander 2.", effect: "heal_2" },
+    { id: "rb_shield", name: "Shield Wall", faction: "red", type: "soldier", cost: 2, attack: 1, health: 4, text: "Guard.", effect: "none", keywords: ["guard"] },
+    { id: "rb_entrench", name: "Entrench", faction: "red", type: "order", cost: 2, text: "Give a friendly soldier +0/+3.", effect: "buff_friend_0_3" },
+    { id: "rb_medic_tent", name: "Medic Tent", faction: "red", type: "order", cost: 2, text: "Heal your commander 3.", effect: "heal_3" },
+    { id: "rb_sergeant", name: "Line Sergeant", faction: "red", type: "soldier", cost: 3, attack: 2, health: 4, text: "Battlecry: Give another friendly soldier +1/+1.", effect: "bc_buff_ally_1_1", keywords: ["battlecry"] },
+    { id: "rb_banner", name: "Banner Bearer", faction: "red", type: "soldier", cost: 3, attack: 2, health: 3, text: "Guard. Battlecry: Heal your commander 1.", effect: "bc_heal_1", keywords: ["guard", "battlecry"] },
+    { id: "rb_heavy", name: "Heavy Infantry", faction: "red", type: "soldier", cost: 4, attack: 3, health: 5, text: "Guard.", effect: "none", keywords: ["guard"] },
+    { id: "rb_mortar", name: "Mortar Team", faction: "red", type: "soldier", cost: 4, attack: 4, health: 3, text: "Long gunners.", effect: "none" },
+    { id: "rb_reinforce", name: "Reinforcements", faction: "red", type: "order", cost: 4, text: "Summon a 1/1 Rifle Recruit. Draw 1.", effect: "summon_1_1_draw" },
+    { id: "rb_barrage", name: "Barrage Order", faction: "red", type: "order", cost: 5, text: "Deal 3 damage to an enemy soldier.", effect: "damage_enemy_soldier_3" },
+    { id: "rb_colonel", name: "Field Colonel", faction: "red", type: "soldier", cost: 5, attack: 4, health: 6, text: "Battlecry: Other friendly soldiers gain +1/+1.", effect: "bc_buff_all_1_1", keywords: ["battlecry"] },
+    { id: "rb_armor", name: "Armor Platoon", faction: "red", type: "soldier", cost: 6, attack: 5, health: 7, text: "Guard.", effect: "none", keywords: ["guard"] },
+
+    // —— Black Ops (aggressive, pings, draw, burst) ——
+    { id: "bo_infil", name: "Infiltrator", faction: "black", type: "soldier", cost: 1, attack: 2, health: 1, text: "Cut the wire.", effect: "none" },
+    { id: "bo_recon", name: "Recon Sweep", faction: "black", type: "order", cost: 1, text: "Draw a card.", effect: "draw_1" },
+    { id: "bo_raider", name: "Shock Raider", faction: "black", type: "soldier", cost: 2, attack: 2, health: 2, text: "Fast boots.", effect: "none" },
+    { id: "bo_saboteur", name: "Saboteur", faction: "black", type: "soldier", cost: 2, attack: 3, health: 1, text: "Battlecry: Deal 1 to an enemy soldier.", effect: "bc_ping_enemy_1", keywords: ["battlecry"] },
+    { id: "bo_smoke", name: "Smoke Barrage", faction: "black", type: "order", cost: 2, text: "Deal 2 damage to the enemy commander.", effect: "face_2" },
+    { id: "bo_intel", name: "Intel Packet", faction: "black", type: "order", cost: 2, text: "Draw 2 cards.", effect: "draw_2" },
+    { id: "bo_striker", name: "Night Striker", faction: "black", type: "soldier", cost: 3, attack: 3, health: 2, text: "Battlecry: Deal 1 to the enemy commander.", effect: "bc_face_1", keywords: ["battlecry"] },
+    { id: "bo_ambush", name: "Ambush Order", faction: "black", type: "order", cost: 3, text: "Deal 3 damage to an enemy soldier.", effect: "damage_enemy_soldier_3" },
+    { id: "bo_assault", name: "Assault Team", faction: "black", type: "soldier", cost: 3, attack: 4, health: 2, text: "Hit hard, leave fast.", effect: "none" },
+    { id: "bo_commando", name: "Commando", faction: "black", type: "soldier", cost: 4, attack: 4, health: 3, text: "Battlecry: Draw 1.", effect: "bc_draw_1", keywords: ["battlecry"] },
+    { id: "bo_breach", name: "Breach Charge", faction: "black", type: "order", cost: 4, text: "Deal 4 to an enemy soldier or 3 to the enemy commander.", effect: "flex_4_or_face_3" },
+    { id: "bo_ghost", name: "Ghost Operative", faction: "black", type: "soldier", cost: 5, attack: 5, health: 3, text: "Battlecry: Deal 2 to the enemy commander.", effect: "bc_face_2", keywords: ["battlecry"] },
+    { id: "bo_overkill", name: "Overkill Order", faction: "black", type: "order", cost: 5, text: "Deal 5 damage to the enemy commander.", effect: "face_5" },
+    { id: "bo_vanguard", name: "Vanguard Blade", faction: "black", type: "soldier", cost: 6, attack: 6, health: 4, text: "Battlecry: Deal 1 to all enemy soldiers.", effect: "bc_aoe_1", keywords: ["battlecry"] },
+
+
+    // —— Leader signatures ——
+    { id: "ld_iron_pulse", name: "Iron Pulse", faction: "red", type: "order", cost: 2, text: "Heal your commander 2. Give a friendly soldier +1/+1.", effect: "heal_2_buff_1_1" },
+    { id: "ld_aegis", name: "Aegis Protocol", faction: "red", type: "order", cost: 3, text: "Give all friendly Guards +0/+2.", effect: "buff_guards_0_2" },
+    { id: "ld_banner_call", name: "Banner Call", faction: "red", type: "order", cost: 2, text: "Draw a card. If you control a Guard, draw another.", effect: "draw_1_if_guard_draw" },
+    { id: "ld_shadow_sting", name: "Shadow Sting", faction: "black", type: "order", cost: 1, text: "Deal 2 to the enemy commander.", effect: "face_2" },
+    { id: "ld_wire_cut", name: "Wire Cut", faction: "black", type: "order", cost: 2, text: "Deal 3 to an enemy Guard, else 2 to an enemy soldier.", effect: "damage_guard_3_or_2" },
+    { id: "ld_intel_surge", name: "Intel Surge", faction: "black", type: "order", cost: 3, text: "Draw 2 cards.", effect: "draw_2" },
+    // Token for Reinforcements
+    { id: "tok_recruit", name: "Rifle Recruit", faction: "neutral", type: "soldier", cost: 1, attack: 1, health: 1, text: "Fresh boots.", effect: "none" },
+  ];
+
+  const BY_ID = Object.create(null);
+  for (const d of DEFS) BY_ID[d.id] = d;
+
+  function buildDeckList(faction) {
+    const neutrals = [
+      "n_scout", "n_scout", "n_runner", "n_medic",
+      "n_supply", "n_supply", "n_shot", "n_rally", "n_frag",
+    ];
+    const red = [
+      "rb_rifle", "rb_rifle", "rb_aid", "rb_shield", "rb_shield",
+      "rb_entrench", "rb_medic_tent", "rb_sergeant", "rb_banner",
+      "rb_heavy", "rb_mortar", "rb_reinforce", "rb_barrage",
+      "rb_colonel", "rb_armor",
+    ];
+    const black = [
+      "bo_infil", "bo_infil", "bo_recon", "bo_raider", "bo_saboteur",
+      "bo_smoke", "bo_intel", "bo_striker", "bo_ambush",
+      "bo_assault", "bo_commando", "bo_breach", "bo_ghost",
+      "bo_overkill", "bo_vanguard",
+    ];
+    return neutrals.concat(faction === "red" ? red : black);
+  }
+
+  function createDeck(faction, rng) {
+    const ids = buildDeckList(faction);
+    return createDeckFromList(ids, faction, rng);
+  }
+
+  function createDeckFromList(ids, tag, rng) {
+    const cards = ids.map((id, i) => instantiate(id, `${tag || "deck"}_${i}_${id}`));
+    shuffle(cards, rng);
+    return cards;
+  }
+
+  function instantiate(defId, instanceId) {
+    const d = BY_ID[defId];
+    if (!d) throw new Error("Unknown card " + defId);
+    return {
+      instanceId,
+      defId: d.id,
+      name: d.name,
+      faction: d.faction,
+      type: d.type,
+      cost: d.cost,
+      attack: d.attack || 0,
+      health: d.health || 0,
+      maxHealth: d.health || 0,
+      text: d.text,
+      effect: d.effect || "none",
+      keywords: (d.keywords || []).slice(),
+      canAttack: false,
+      exhausted: false,
+    };
+  }
+
+  function shuffle(arr, rng) {
+    const r = rng || Math.random;
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(r() * (i + 1));
+      const t = arr[i];
+      arr[i] = arr[j];
+      arr[j] = t;
+    }
+    return arr;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  return {
+    DEFS,
+    BY_ID,
+    buildDeckList,
+    createDeck,
+    createDeckFromList,
+    instantiate,
+    shuffle,
+    mulberry32,
+    FACTIONS: ["red", "black"],
+    MAX_BOARD: 5,
+    START_HP: 20,
+    MAX_SUPPLY: 10,
+    HAND_LIMIT: 7,
+    OPENING_HAND: 4,
+  };
+});
+
+</script>
+  <script>
+/**
+ * Holdfast — pure rules engine (no DOM). Node + browser safe.
+ * Single-row soldier combat. Win by reducing enemy commander to 0 HP.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(require("./cards.js"));
+  } else {
+    root.HoldfastEngine = factory(root.HoldfastCards);
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this, function (Cards) {
+  "use strict";
+
+  const {
+    createDeck, createDeckFromList, instantiate, mulberry32, MAX_BOARD, START_HP,
+    MAX_SUPPLY, HAND_LIMIT, OPENING_HAND,
+  } = Cards;
+
+  function deepCloneCard(c) {
+    return {
+      instanceId: c.instanceId,
+      defId: c.defId,
+      name: c.name,
+      faction: c.faction,
+      type: c.type,
+      cost: c.cost,
+      attack: c.attack,
+      health: c.health,
+      maxHealth: c.maxHealth,
+      text: c.text,
+      effect: c.effect,
+      keywords: c.keywords.slice(),
+      canAttack: c.canAttack,
+      exhausted: c.exhausted,
+    };
+  }
+
+  function makePlayer(id, faction, rng, opts) {
+    opts = opts || {};
+    const deckIds = opts.deckList;
+    const deck = deckIds && deckIds.length
+      ? createDeckFromList(deckIds, faction + id, rng)
+      : createDeck(faction, rng);
+    return {
+      id,
+      faction,
+      leaderId: opts.leaderId || null,
+      leaderName: opts.leaderName || null,
+      power: opts.power ? { id: opts.power.id, name: opts.power.name, text: opts.power.text, cost: opts.power.cost, cooldown: opts.power.cooldown } : null,
+      powerCd: 0,
+      passive: opts.passive || null,
+      flags: { firstFaceBonusUsed: false, guardDiscountUsed: false, orderDiscountUsed: false },
+      hp: opts.startHp != null ? opts.startHp : START_HP,
+      supply: 0,
+      supplyMax: 0,
+      deck: deck,
+      hand: [],
+      discard: [],
+      board: [],
+      firstTurn: true,
+      fatigue: 0,
+      bossRegen: !!opts.bossRegen,
+    };
+  }
+
+  function createGame(opts) {
+    opts = opts || {};
+    const seed = opts.seed != null ? opts.seed : (Date.now() & 0xffffffff);
+    const rng = mulberry32(seed);
+    const pFaction = opts.playerFaction || "red";
+    const oFaction = opts.opponentFaction || (pFaction === "red" ? "black" : "red");
+    const coop = !!opts.coop;
+    const players = [
+      makePlayer(0, pFaction, rng, {
+        deckList: opts.playerDeck,
+        leaderId: opts.playerLeaderId,
+        leaderName: opts.playerLeaderName,
+        power: opts.playerPower,
+        passive: opts.playerPassive,
+      }),
+    ];
+    if (coop) {
+      players.push(makePlayer(1, opts.allyFaction || pFaction, rng, {
+        deckList: opts.allyDeck,
+        leaderId: opts.allyLeaderId,
+        leaderName: opts.allyLeaderName || "Ally",
+        power: opts.allyPower,
+        passive: opts.allyPassive,
+      }));
+      players.push(makePlayer(2, oFaction, rng, {
+        deckList: opts.opponentDeck,
+        leaderId: opts.opponentLeaderId || "raid_boss",
+        leaderName: opts.opponentLeaderName || "Siege Titan",
+        power: opts.opponentPower,
+        passive: opts.opponentPassive,
+        startHp: opts.opponentHp != null ? opts.opponentHp : 30,
+        bossRegen: true,
+      }));
+    } else {
+      players.push(makePlayer(1, oFaction, rng, {
+        deckList: opts.opponentDeck,
+        leaderId: opts.opponentLeaderId,
+        leaderName: opts.opponentLeaderName,
+        power: opts.opponentPower,
+        passive: opts.opponentPassive,
+        startHp: opts.opponentHp,
+        bossRegen: opts.raidBoss,
+      }));
+    }
+    for (const p of players) {
+      for (let i = 0; i < OPENING_HAND; i++) drawCard(p);
+    }
+    // Non-starting seats get +1 card
+    for (let i = 1; i < players.length; i++) drawCard(players[i]);
+
+    const state = {
+      seed,
+      turn: 0,
+      active: 0,
+      phase: "main",
+      winner: null,
+      winReason: null,
+      log: [],
+      pending: null,
+      players,
+      rng,
+      _uid: 0,
+      coop,
+    };
+    startTurn(state);
+    const ln0 = players[0].leaderName || factionName(pFaction);
+    const ln1 = players[1].leaderName || factionName(oFaction);
+    log(state, "Holdfast start (seed " + seed + "). " + ln0 + " vs " + ln1 + ".");
+    return state;
+  }
+
+  function factionName(f) {
+    if (f === "red") return "Red Banner";
+    if (f === "black") return "Black Ops";
+    return f;
+  }
+
+  function log(state, msg) {
+    state.log.push(msg);
+    if (state.log.length > 80) state.log.shift();
+  }
+
+  function drawCard(player) {
+    if (player.deck.length === 0) {
+      player.fatigue = (player.fatigue || 0) + 1;
+      player.hp -= player.fatigue;
+      return { fatigue: true, amount: player.fatigue };
+    }
+    const card = player.deck.pop();
+    if (player.hand.length >= HAND_LIMIT) {
+      player.discard.push(card);
+      return { burned: true, card };
+    }
+    player.hand.push(card);
+    return { card };
+  }
+
+  function activePlayer(state) {
+    return state.players[state.active];
+  }
+
+  function isCoop(state) {
+    return !!(state.coop || state.players.length === 3);
+  }
+
+  function bossIndex(state) {
+    return isCoop(state) ? 2 : 1;
+  }
+
+  function teamIndices(state) {
+    return isCoop(state) ? [0, 1] : [0];
+  }
+
+  function enemyPlayer(state) {
+    if (!isCoop(state)) return state.players[1 - state.active];
+    if (state.active === 2) {
+      // Boss focuses lowest-HP living teammate
+      const living = [0, 1].filter((i) => state.players[i].hp > 0);
+      living.sort((a, b) => state.players[a].hp - state.players[b].hp);
+      return state.players[living[0] != null ? living[0] : 0];
+    }
+    return state.players[2];
+  }
+
+  function nextActive(state) {
+    if (!isCoop(state)) return 1 - state.active;
+    let n = (state.active + 1) % 3;
+    for (let g = 0; g < 3; g++) {
+      if (n === 2) return 2;
+      if (state.players[n].hp > 0) return n;
+      n = (n + 1) % 3;
+    }
+    return 2;
+  }
+
+  function pname(state, p) {
+    if (isCoop(state)) {
+      if (p.id === 0) return "You";
+      if (p.id === 1) return p.leaderName || "Ally";
+      return p.leaderName || "Boss";
+    }
+    return p.id === 0 ? "You" : "Opponent";
+  }
+
+  function startTurn(state) {
+    const p = activePlayer(state);
+    state.phase = "main";
+    state.pending = null;
+
+    if (!p.firstTurn) {
+      p.supplyMax = Math.min(MAX_SUPPLY, p.supplyMax + 1);
+    } else {
+      p.supplyMax = 1;
+    }
+    p.supply = p.supplyMax;
+
+    if (!p.firstTurn) {
+      const d = drawCard(p);
+      if (d.fatigue) log(state, `${pname(state, p)} takes ${d.amount} fatigue.`);
+    }
+
+    for (const s of p.board) {
+      s.canAttack = true;
+      s.exhausted = false;
+    }
+
+    if (p.powerCd > 0) p.powerCd -= 1;
+    if (p.flags) {
+      p.flags.guardDiscountUsed = false;
+      p.flags.orderDiscountUsed = false;
+    }
+    if (p.bossRegen && !p.firstTurn) {
+      p.hp = Math.min(30, p.hp + 1);
+      log(state, `${pname(state, p)} regenerates 1.`);
+    }
+
+    checkDeathsAndWin(state);
+  }
+
+  function endTurn(state) {
+    if (state.phase === "gameover") return { ok: false, error: "game over" };
+    if (state.phase !== "main" && state.phase !== "targeting") return { ok: false, error: "bad phase" };
+    const p = activePlayer(state);
+    p.firstTurn = false;
+    state.active = nextActive(state);
+    state.turn += 1;
+    startTurn(state);
+    log(state, `— Turn ${Math.floor(state.turn / 2) + 1}, ${pname(state, activePlayer(state))} —`);
+    return { ok: true };
+  }
+
+  function hasGuard(player) {
+    return player.board.some((s) => s.keywords.indexOf("guard") >= 0 && s.health > 0);
+  }
+
+  function getAttackTargets(enemy) {
+    const guards = enemy.board.filter((s) => s.keywords.indexOf("guard") >= 0 && s.health > 0);
+    if (guards.length) return { mustGuard: true, soldiers: guards, face: false };
+    return { mustGuard: false, soldiers: enemy.board.slice(), face: true };
+  }
+
+
+  function effectiveCost(player, card) {
+    let cost = card.cost;
+    if (!player.flags) return cost;
+    if (card.type === "soldier" && (card.keywords || []).indexOf("guard") >= 0 && player.leaderId === "shield_mother" && !player.flags.guardDiscountUsed) {
+      cost = Math.max(0, cost - 1);
+    }
+    if (card.type === "order" && player.leaderId === "shadow_broker" && !player.flags.orderDiscountUsed) {
+      cost = Math.max(0, cost - 1);
+    }
+    return cost;
+  }
+
+  function heroPowerTargets(state, p) {
+    const e = enemyPlayer(state);
+    const pid = p.power && p.power.id;
+    if (!pid) return { ok: false, needsTarget: false, options: [] };
+    if (pid === "field_dress" || pid === "shadow_stab" || pid === "leak" || pid === "rally_flag") {
+      return { ok: true, needsTarget: false, options: [] };
+    }
+    if (pid === "brace") {
+      const opts = p.board.map((s) => ({ type: "soldier", id: s.instanceId, owner: p.id }));
+      return { needsTarget: true, ok: opts.length > 0, options: opts };
+    }
+    if (pid === "sabotage") {
+      const opts = e.board.map((s) => ({ type: "soldier", id: s.instanceId, owner: e.id }));
+      return { needsTarget: true, ok: opts.length > 0, options: opts };
+    }
+    return { ok: true, needsTarget: false, options: [] };
+  }
+
+  function listLegalPlays(state) {
+    if (state.phase !== "main" || state.winner != null) return [];
+    const p = activePlayer(state);
+    const e = enemyPlayer(state);
+    const plays = [];
+
+    for (const card of p.hand) {
+      const cost = effectiveCost(p, card);
+      if (cost > p.supply) continue;
+      if (card.type === "soldier") {
+        if (p.board.length < MAX_BOARD) {
+          plays.push({ kind: "play_soldier", cardId: card.instanceId });
+        }
+      } else if (card.type === "order") {
+        const targets = orderTargets(state, card);
+        if (targets.needsTarget) {
+          for (const tg of targets.options) {
+            plays.push({ kind: "play_order", cardId: card.instanceId, target: tg });
+          }
+        } else if (targets.ok) {
+          plays.push({ kind: "play_order", cardId: card.instanceId, target: null });
+        }
+      }
+    }
+
+    // Hero power
+    if (p.power && p.powerCd <= 0 && p.supply >= (p.power.cost || 0)) {
+      const hpTargets = heroPowerTargets(state, p);
+      if (hpTargets.needsTarget) {
+        for (const tg of hpTargets.options) {
+          plays.push({ kind: "hero_power", target: tg });
+        }
+      } else if (hpTargets.ok) {
+        plays.push({ kind: "hero_power", target: null });
+      }
+    }
+
+    const atkTargets = getAttackTargets(e);
+    for (const s of p.board) {
+      if (!s.canAttack) continue;
+      for (const def of atkTargets.soldiers) {
+        plays.push({ kind: "attack_soldier", attackerId: s.instanceId, targetId: def.instanceId });
+      }
+      if (atkTargets.face) {
+        plays.push({ kind: "attack_face", attackerId: s.instanceId });
+      }
+    }
+
+    plays.push({ kind: "end_turn" });
+    return plays;
+  }
+
+  function orderTargets(state, card) {
+    const p = activePlayer(state);
+    const e = enemyPlayer(state);
+    const eff = card.effect;
+    const enemySoldiers = e.board.map((s) => ({ type: "soldier", id: s.instanceId, owner: e.id }));
+    const friendSoldiers = p.board.map((s) => ({ type: "soldier", id: s.instanceId, owner: p.id }));
+
+    switch (eff) {
+      case "draw_1":
+      case "draw_2":
+      case "heal_2":
+      case "heal_3":
+      case "buff_all_friend_1_0":
+      case "damage_all_enemy_1":
+      case "face_2":
+      case "face_5":
+      case "summon_1_1_draw":
+        return { needsTarget: false, ok: true, options: [] };
+      case "damage_guard_3_or_2":
+      case "damage_enemy_soldier_2":
+      case "damage_enemy_soldier_3":
+        return { needsTarget: true, ok: enemySoldiers.length > 0, options: enemySoldiers };
+      case "heal_2_buff_1_1":
+      case "buff_friend_0_3":
+        return { needsTarget: true, ok: friendSoldiers.length > 0, options: friendSoldiers };
+      case "flex_4_or_face_3": {
+        const opts = [{ type: "hero", id: "enemy_hero" }];
+        for (const s of enemySoldiers) opts.push(s);
+        return { needsTarget: true, ok: true, options: opts };
+      }
+      default:
+        return { needsTarget: false, ok: true, options: [] };
+    }
+  }
+
+  function findCardInHand(player, id) {
+    return player.hand.find((c) => c.instanceId === id);
+  }
+
+  function findSoldier(player, id) {
+    return player.board.find((s) => s.instanceId === id) || null;
+  }
+
+  function spend(player, card) {
+    const cost = effectiveCost(player, card);
+    player.supply -= cost;
+    if (player.flags) {
+      if (card.type === "soldier" && (card.keywords || []).indexOf("guard") >= 0 && player.leaderId === "shield_mother" && cost < card.cost) {
+        player.flags.guardDiscountUsed = true;
+      }
+      if (card.type === "order" && player.leaderId === "shadow_broker" && cost < card.cost) {
+        player.flags.orderDiscountUsed = true;
+      }
+    }
+  }
+
+  function removeFromHand(player, card) {
+    const i = player.hand.findIndex((c) => c.instanceId === card.instanceId);
+    if (i >= 0) player.hand.splice(i, 1);
+  }
+
+  function actionsEqual(a, b) {
+    if (a.kind !== b.kind) return false;
+    if (a.cardId !== b.cardId) return false;
+    if (a.attackerId !== b.attackerId) return false;
+    if (a.targetId !== b.targetId) return false;
+    if (!a.target && !b.target) return true;
+    if (!a.target || !b.target) return false;
+    return a.target.type === b.target.type && a.target.id === b.target.id;
+  }
+
+  function applyAction(state, action) {
+    if (state.phase === "gameover") return { ok: false, error: "game over" };
+    if (!action || !action.kind) return { ok: false, error: "bad action" };
+
+    if (action.kind === "end_turn") return endTurn(state);
+
+    const legal = listLegalPlays(state);
+    const match = legal.find((a) => actionsEqual(a, action));
+    if (!match) return { ok: false, error: "illegal action" };
+
+    const p = activePlayer(state);
+    const e = enemyPlayer(state);
+
+    if (action.kind === "play_soldier") {
+      const card = findCardInHand(p, action.cardId);
+      spend(p, card);
+      removeFromHand(p, card);
+      card.canAttack = false;
+      card.exhausted = true;
+      if (p.leaderId === "iron_marshal" && (card.keywords || []).indexOf("guard") >= 0) {
+        card.health += 1; card.maxHealth += 1;
+      }
+      if (e.leaderId === "wire_cutter" && (card.keywords || []).indexOf("guard") >= 0) {
+        card.health = Math.max(1, card.health - 1);
+      }
+      p.board.push(card);
+      log(state, `${pname(state, p)} deploys ${card.name}.`);
+      resolveBattlecry(state, p, e, card);
+      cleanup(state);
+      return { ok: true };
+    }
+
+    if (action.kind === "play_order") {
+      const card = findCardInHand(p, action.cardId);
+      spend(p, card);
+      removeFromHand(p, card);
+      log(state, `${pname(state, p)} issues ${card.name}.`);
+      resolveOrder(state, p, e, card, action.target);
+      p.discard.push(card);
+      cleanup(state);
+      return { ok: true };
+    }
+
+    if (action.kind === "hero_power") {
+      if (!p.power || p.powerCd > 0) return { ok: false, error: "power unavailable" };
+      if (p.supply < (p.power.cost || 0)) return { ok: false, error: "not enough supply" };
+      p.supply -= p.power.cost || 0;
+      p.powerCd = (p.power.cooldown || 0) + 1;
+      log(state, `${pname(state, p)} uses ${p.power.name}.`);
+      resolveHeroPower(state, p, e, action.target);
+      cleanup(state);
+      return { ok: true };
+    }
+
+    if (action.kind === "attack_face" || action.kind === "attack_soldier") {
+      const atk = findSoldier(p, action.attackerId);
+      if (!atk) return { ok: false, error: "no attacker" };
+      atk.canAttack = false;
+      atk.exhausted = true;
+
+      if (action.kind === "attack_face") {
+        let dmg = atk.attack;
+        if (p.leaderId === "banner_saint" && p.board.some((s) => (s.keywords || []).indexOf("guard") >= 0)) dmg += 1;
+        if (p.leaderId === "night_phantom" && p.flags && !p.flags.firstFaceBonusUsed) {
+          dmg += 1; p.flags.firstFaceBonusUsed = true;
+        }
+        e.hp -= dmg;
+        log(state, `${pname(state, p)}'s ${atk.name} strikes the commander for ${dmg}.`);
+      } else {
+        const def = findSoldier(e, action.targetId);
+        if (!def) return { ok: false, error: "no defender" };
+        let dmg = atk.attack;
+        if (p.leaderId === "banner_saint" && p.board.some((s) => (s.keywords || []).indexOf("guard") >= 0)) dmg += 1;
+        def.health -= dmg;
+        atk.health -= def.attack;
+        log(state, `${atk.name} (${dmg}) clashes with ${def.name} (${def.attack}).`);
+      }
+      cleanup(state);
+      return { ok: true };
+    }
+
+    return { ok: false, error: "unknown kind" };
+  }
+
+  function resolveHeroPower(state, p, e, target) {
+    const pid = p.power && p.power.id;
+    if (pid === "field_dress" || pid === "field_dress_b") {
+      const amt = pid === "field_dress_b" ? 1 : 2;
+      p.hp = Math.min(START_HP, p.hp + amt);
+      if (pid === "field_dress_b") drawCard(p);
+      log(state, `${pname(state, p)} heals ${amt}.`);
+    } else if (pid === "brace" || pid === "brace_b") {
+      const s = target && findSoldier(p, target.id);
+      if (s) { s.health += pid === "brace_b" ? 1 : 2; s.maxHealth += pid === "brace_b" ? 1 : 2; if (pid === "brace_b") s.attack += 1; }
+    } else if (pid === "rally_flag" || pid === "rally_flag_b") {
+      if (p.board.length < MAX_BOARD) {
+        const tok = instantiate("tok_recruit", "tok_" + (state._uid++));
+        tok.canAttack = false; tok.exhausted = true;
+        if (pid === "rally_flag_b") { tok.attack = 2; tok.health = 1; tok.maxHealth = 1; }
+        p.board.push(tok);
+      }
+    } else if (pid === "shadow_stab" || pid === "shadow_stab_b") {
+      e.hp -= pid === "shadow_stab_b" ? 2 : 1;
+      if (pid === "shadow_stab_b") p.powerCd += 1; // slower but stronger — sidegrade already in id
+    } else if (pid === "sabotage" || pid === "sabotage_b") {
+      const s = target && findSoldier(e, target.id);
+      if (s) s.health -= pid === "sabotage_b" ? 1 : 2;
+      if (pid === "sabotage_b" && s) e.hp -= 1;
+    } else if (pid === "leak" || pid === "leak_b") {
+      drawCard(p);
+      if (pid === "leak_b") { e.hp -= 1; }
+    }
+  }
+
+  function resolveBattlecry(state, p, e, card) {
+    const eff = card.effect;
+    switch (eff) {
+      case "bc_draw_1": {
+        const d = drawCard(p);
+        if (d.fatigue) log(state, `${pname(state, p)} fatigues.`);
+        else if (d.card) log(state, `${pname(state, p)} draws.`);
+        break;
+      }
+      case "bc_heal_1":
+        p.hp = Math.min(START_HP, p.hp + 1);
+        log(state, `${pname(state, p)} heals 1.`);
+        break;
+      case "bc_heal_2":
+        p.hp = Math.min(START_HP, p.hp + 2);
+        log(state, `${pname(state, p)} heals 2.`);
+        break;
+      case "bc_face_1":
+        e.hp -= 1;
+        log(state, `${card.name} deals 1 to enemy commander.`);
+        break;
+      case "bc_face_2":
+        e.hp -= 2;
+        log(state, `${card.name} deals 2 to enemy commander.`);
+        break;
+      case "bc_buff_ally_1_1": {
+        const allies = p.board.filter((s) => s.instanceId !== card.instanceId);
+        if (allies.length) {
+          // Buff the lowest-attack ally (simple auto-pick)
+          allies.sort((a, b) => a.attack - b.attack || a.health - b.health);
+          const t = allies[0];
+          t.attack += 1;
+          t.health += 1;
+          t.maxHealth += 1;
+          log(state, `${t.name} gains +1/+1.`);
+        }
+        break;
+      }
+      case "bc_buff_all_1_1":
+        for (const s of p.board) {
+          if (s.instanceId === card.instanceId) continue;
+          s.attack += 1;
+          s.health += 1;
+          s.maxHealth += 1;
+        }
+        log(state, `Friendly soldiers gain +1/+1.`);
+        break;
+      case "bc_ping_enemy_1": {
+        if (e.board.length) {
+          // Ping highest attack enemy (or first guard)
+          const guards = e.board.filter((s) => s.keywords.indexOf("guard") >= 0);
+          const pool = guards.length ? guards : e.board;
+          const t = pool.slice().sort((a, b) => b.attack - a.attack)[0];
+          t.health -= 1;
+          log(state, `${card.name} deals 1 to ${t.name}.`);
+        }
+        break;
+      }
+      case "bc_aoe_1":
+        for (const s of e.board) s.health -= 1;
+        log(state, `${card.name} deals 1 to all enemy soldiers.`);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function resolveOrder(state, p, e, card, target) {
+    const eff = card.effect;
+    switch (eff) {
+      case "draw_1": {
+        const d = drawCard(p);
+        if (d.fatigue) log(state, `${pname(state, p)} fatigues.`);
+        break;
+      }
+      case "draw_2":
+        drawCard(p);
+        drawCard(p);
+        log(state, `${pname(state, p)} draws 2.`);
+        break;
+      case "heal_2":
+        p.hp = Math.min(START_HP, p.hp + 2);
+        log(state, `${pname(state, p)} heals 2.`);
+        break;
+      case "heal_3":
+        p.hp = Math.min(START_HP, p.hp + 3);
+        log(state, `${pname(state, p)} heals 3.`);
+        break;
+      case "buff_all_friend_1_0":
+        for (const s of p.board) s.attack += 1;
+        log(state, `Friendly soldiers gain +1 Attack.`);
+        break;
+      case "damage_all_enemy_1":
+        for (const s of e.board) s.health -= 1;
+        log(state, `All enemy soldiers take 1.`);
+        break;
+      case "face_2":
+        e.hp -= 2;
+        log(state, `Enemy commander takes 2.`);
+        break;
+      case "face_5":
+        e.hp -= 5;
+        log(state, `Enemy commander takes 5.`);
+        break;
+      case "heal_2_buff_1_1": {
+        p.hp = Math.min(START_HP, p.hp + 2);
+        if (target && target.type === "soldier") {
+          const s = findSoldier(p, target.id);
+          if (s) { s.attack += 1; s.health += 1; s.maxHealth += 1; }
+        } else if (p.board.length) {
+          const s = p.board[0]; s.attack += 1; s.health += 1; s.maxHealth += 1;
+        }
+        break;
+      }
+      case "buff_guards_0_2":
+        for (const s of p.board) if ((s.keywords || []).indexOf("guard") >= 0) { s.health += 2; s.maxHealth += 2; }
+        break;
+      case "draw_1_if_guard_draw":
+        drawCard(p);
+        if (p.board.some((s) => (s.keywords || []).indexOf("guard") >= 0)) drawCard(p);
+        break;
+      case "damage_guard_3_or_2": {
+        if (target && target.type === "soldier") {
+          const s = findSoldier(e, target.id);
+          if (s) {
+            const amt = (s.keywords || []).indexOf("guard") >= 0 ? 3 : 2;
+            s.health -= amt;
+          }
+        }
+        break;
+      }
+      case "damage_enemy_soldier_2":
+      case "damage_enemy_soldier_3": {
+        const amt = eff === "damage_enemy_soldier_2" ? 2 : 3;
+        if (target && target.type === "soldier") {
+          const s = findSoldier(e, target.id);
+          if (s) {
+            s.health -= amt;
+            log(state, `${s.name} takes ${amt}.`);
+          }
+        }
+        break;
+      }
+      case "buff_friend_0_3": {
+        if (target && target.type === "soldier") {
+          const s = findSoldier(p, target.id);
+          if (s) {
+            s.health += 3;
+            s.maxHealth += 3;
+            log(state, `${s.name} gains +0/+3.`);
+          }
+        }
+        break;
+      }
+      case "flex_4_or_face_3": {
+        if (target && target.type === "hero") {
+          e.hp -= 3;
+          log(state, `Enemy commander takes 3.`);
+        } else if (target && target.type === "soldier") {
+          const s = findSoldier(e, target.id);
+          if (s) {
+            s.health -= 4;
+            log(state, `${s.name} takes 4.`);
+          }
+        }
+        break;
+      }
+      case "summon_1_1_draw": {
+        if (p.board.length < MAX_BOARD) {
+          state._uid += 1;
+          const tok = instantiate("tok_recruit", `tok_${state._uid}`);
+          tok.canAttack = false;
+          tok.exhausted = true;
+          p.board.push(tok);
+          log(state, `Rifle Recruit joins the field.`);
+        }
+        drawCard(p);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  function cleanup(state) {
+    for (const pl of state.players) {
+      const dead = [];
+      for (const s of pl.board) {
+        if (s.health <= 0) dead.push(s);
+      }
+      for (const s of dead) {
+        const i = pl.board.indexOf(s);
+        if (i >= 0) pl.board.splice(i, 1);
+        pl.discard.push(s);
+        log(state, `${s.name} is destroyed.`);
+      }
+    }
+    checkDeathsAndWin(state);
+  }
+
+  function checkDeathsAndWin(state) {
+    if (state.winner != null) return;
+    if (isCoop(state)) {
+      const boss = state.players[2];
+      const teamAlive = state.players[0].hp > 0 || state.players[1].hp > 0;
+      if (boss.hp <= 0) {
+        state.winner = 0;
+        state.winReason = "hp";
+        state.phase = "gameover";
+        log(state, "Raid cleared — the Siege Titan falls!");
+      } else if (!teamAlive) {
+        state.winner = 2;
+        state.winReason = "hp";
+        state.phase = "gameover";
+        log(state, "Raid failed — both commanders are down.");
+      }
+      return;
+    }
+    const p0 = state.players[0];
+    const p1 = state.players[1];
+    if (p0.hp <= 0 && p1.hp <= 0) {
+      state.winner = state.active === 0 ? 1 : 0;
+      state.winReason = "hp";
+      state.phase = "gameover";
+      log(state, "Both commanders fall — last strike wins.");
+    } else if (p0.hp <= 0) {
+      state.winner = 1;
+      state.winReason = "hp";
+      state.phase = "gameover";
+      log(state, "Opponent wins — your HP reached 0.");
+    } else if (p1.hp <= 0) {
+      state.winner = 0;
+      state.winReason = "hp";
+      state.phase = "gameover";
+      log(state, "You win — enemy HP reached 0.");
+    }
+  }
+
+  function serialize(state) {
+    function serPlayer(pl) {
+      return {
+        id: pl.id,
+        faction: pl.faction,
+        leaderId: pl.leaderId || null,
+        leaderName: pl.leaderName || null,
+        power: pl.power ? { id: pl.power.id, name: pl.power.name, cost: pl.power.cost, cooldown: pl.power.cooldown } : null,
+        powerCd: pl.powerCd || 0,
+        passive: pl.passive || null,
+        flags: pl.flags ? Object.assign({}, pl.flags) : null,
+        hp: pl.hp,
+        life: pl.hp,
+        supply: pl.supply,
+        supplyMax: pl.supplyMax,
+        deckCount: pl.deck.length,
+        hand: pl.hand.map(deepCloneCard),
+        discardCount: pl.discard.length,
+        board: pl.board.map(deepCloneCard),
+        firstTurn: pl.firstTurn,
+        fatigue: pl.fatigue || 0,
+        bossRegen: !!pl.bossRegen,
+      };
+    }
+    return {
+      seed: state.seed,
+      turn: state.turn,
+      active: state.active,
+      phase: state.phase,
+      winner: state.winner,
+      winReason: state.winReason,
+      log: state.log.slice(),
+      players: state.players.map(serPlayer),
+      _uid: state._uid || 0,
+      coop: !!state.coop,
+    };
+  }
+
+  function getSnapshot(state) {
+    return serialize(state);
+  }
+
+  function previewAction(state, action) {
+    if (!action) return "";
+    const p = activePlayer(state);
+    const e = enemyPlayer(state);
+    if (action.kind === "attack_face") {
+      const atk = findSoldier(p, action.attackerId);
+      return atk ? `Deal ${atk.attack} to Commander` : "Attack commander";
+    }
+    if (action.kind === "attack_soldier") {
+      const atk = findSoldier(p, action.attackerId);
+      const def = findSoldier(e, action.targetId);
+      if (atk && def) return `${atk.attack} vs ${def.attack} — both take damage`;
+      return "Soldier clash";
+    }
+    if (action.kind === "play_soldier") {
+      const c = findCardInHand(p, action.cardId);
+      return c ? `Deploy ${c.name}` : "Deploy";
+    }
+    if (action.kind === "play_order") {
+      const c = findCardInHand(p, action.cardId);
+      if (!c) return "Order";
+      if (action.target && action.target.type === "hero") return `${c.name}: hit commander`;
+      if (action.target && action.target.type === "soldier") {
+        const own = action.target.owner === p.id ? p : e;
+        const s = findSoldier(own, action.target.id);
+        return s ? `${c.name} → ${s.name}` : c.name;
+      }
+      return c.text || c.name;
+    }
+    if (action.kind === "end_turn") return "End turn";
+    if (action.kind === "hero_power") return p.power ? p.power.name : "Hero power";
+    return "";
+  }
+
+  function runAiGame(seed, aiFn, maxTurns, gameOpts) {
+    maxTurns = maxTurns || 200;
+    const state = createGame(Object.assign({ seed, playerFaction: "red", opponentFaction: "black" }, gameOpts || {}));
+    let steps = 0;
+    while (state.winner == null && steps < maxTurns) {
+      const action = aiFn(state, state.active);
+      const res = applyAction(state, action);
+      if (!res.ok) applyAction(state, { kind: "end_turn" });
+      steps++;
+    }
+    return {
+      seed,
+      winner: state.winner,
+      winReason: state.winReason,
+      steps,
+      hp: [state.players[0].hp, state.players[1].hp],
+      finished: state.winner != null,
+    };
+  }
+
+  function cloneState(state) {
+    const copy = {
+      seed: state.seed,
+      turn: state.turn,
+      active: state.active,
+      phase: state.phase,
+      winner: state.winner,
+      winReason: state.winReason,
+      log: state.log.slice(),
+      pending: state.pending ? JSON.parse(JSON.stringify(state.pending)) : null,
+      players: JSON.parse(JSON.stringify(state.players)),
+      rng: state.rng,
+      _uid: state._uid,
+      coop: !!state.coop,
+    };
+    return copy;
+  }
+
+  function evaluateState(state, forPlayer) {
+    if (state.winner === forPlayer) return 10000;
+    if (state.winner != null) return -10000;
+    const me = state.players[forPlayer];
+    let enemy;
+    if (isCoop(state)) {
+      enemy = forPlayer === 2 ? state.players[0] : state.players[2];
+    } else {
+      enemy = state.players[1 - forPlayer];
+    }
+    let score = (me.hp - enemy.hp) * 3;
+    score += me.board.reduce((s, u) => s + u.attack * 2 + u.health, 0);
+    score -= enemy.board.reduce((s, u) => s + u.attack * 2 + u.health, 0);
+    score += me.hand.length * 0.8;
+    score += me.supply * 0.3;
+    return score;
+  }
+
+  return {
+    createGame,
+    applyAction,
+    listLegalPlays,
+    endTurn,
+    serialize,
+    getSnapshot,
+    previewAction,
+    runAiGame,
+    cloneState,
+    evaluateState,
+    isCoop,
+    bossIndex,
+    teamIndices,
+    nextActive,
+    factionName,
+    hasGuard,
+    START_HP,
+    MAX_SUPPLY,
+    MAX_BOARD,
+  };
+});
+
+</script>
+  <script>
+/**
+ * Holdfast — heuristic AI with Easy / Normal / Hard profiles + hero powers.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(require("./engine.js"));
+  } else {
+    root.HoldfastAI = factory(root.HoldfastEngine);
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this, function (Engine) {
+  "use strict";
+
+  const PROFILES = {
+    easy: { face: 0.45, trade: 0.55, power: 0.35, tempo: 0.45, confNoise: 2.5, endBias: 6.0 },
+    normal: { face: 1.0, trade: 1.0, power: 1.0, tempo: 1.0, confNoise: 0.4, endBias: 0.9 },
+    hard: { face: 1.7, trade: 1.55, power: 1.5, tempo: 1.55, confNoise: 0.02, endBias: -0.5 },
+  };
+
+  function hash(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function findSoldier(player, id) {
+    return player.board.find((x) => x.instanceId === id) || null;
+  }
+
+  function enemyOf(state, me) {
+    if (state.coop || state.players.length === 3) {
+      if (me === 2) {
+        const living = [0, 1].filter((i) => state.players[i].hp > 0);
+        living.sort((a, b) => state.players[a].hp - state.players[b].hp);
+        return state.players[living[0] != null ? living[0] : 0];
+      }
+      return state.players[2];
+    }
+    return state.players[1 - me];
+  }
+
+  function scoreAction(state, a, me, profile) {
+    const p = state.players[me];
+    const e = enemyOf(state, me);
+    const pr = profile || PROFILES.normal;
+    if (!p || !e) return 0;
+
+    if (a.kind === "end_turn") return pr.endBias;
+
+    if (a.kind === "attack_face") {
+      const atk = findSoldier(p, a.attackerId);
+      const dmg = atk ? atk.attack : 1;
+      let score = (8 + dmg * 3) * pr.face;
+      if (e.hp - dmg <= 0) score += 1000;
+      return score;
+    }
+
+    if (a.kind === "attack_soldier") {
+      const atk = findSoldier(p, a.attackerId);
+      const def = findSoldier(e, a.targetId);
+      if (!atk || !def) return 1;
+      let score = 5 * pr.trade;
+      if (def.health <= atk.attack) score += (10 + def.attack) * pr.trade;
+      if (atk.health <= def.attack) score -= 6;
+      if ((def.keywords || []).indexOf("guard") >= 0) score += 4;
+      return score;
+    }
+
+    if (a.kind === "hero_power") {
+      let score = 6 * pr.power;
+      if (p.power && p.power.id.indexOf("shadow_stab") === 0) score += (e.hp <= 5 ? 20 : 4) * pr.face;
+      if (p.power && p.power.id.indexOf("leak") === 0) score += 5 * pr.tempo;
+      if (p.power && p.power.id.indexOf("field_dress") === 0 && p.hp <= 12) score += 8;
+      return score;
+    }
+
+    if (a.kind === "play_soldier" || a.kind === "play_order") {
+      const card = p.hand.find((c) => c.instanceId === a.cardId);
+      if (!card) return 0;
+      let score = (3 + card.cost * 1.4) * pr.tempo;
+      if (card.type === "soldier") score += (card.attack * 2 + card.health) * 0.5;
+      if ((card.keywords || []).indexOf("guard") >= 0) score += 3;
+      if (card.type === "order") {
+        if ((card.effect || "").indexOf("face") >= 0 || card.effect === "face_2" || card.effect === "face_5") {
+          score += 4 * pr.face;
+          if (e.hp <= 5) score += 25;
+        }
+        if ((card.effect || "").indexOf("draw") >= 0) score += 3 * pr.tempo;
+      }
+      score += card.cost * 0.35;
+      return score;
+    }
+    return 0;
+  }
+
+  function chooseAction(state, playerId, difficulty) {
+    if (state.phase === "gameover") return { kind: "end_turn" };
+    if (state.active !== playerId) return { kind: "end_turn" };
+    const profile = PROFILES[difficulty] || PROFILES.normal;
+    const plays = Engine.listLegalPlays(state);
+    if (!plays.length) return { kind: "end_turn" };
+
+    const useLookahead = difficulty === "hard" && Engine.cloneState && Engine.evaluateState;
+    let best = null;
+    let bestScore = -1e9;
+    for (const a of plays) {
+      let total = scoreAction(state, a, playerId, profile);
+      if (useLookahead && a.kind !== "end_turn") {
+        try {
+          const clone = Engine.cloneState(state);
+          const res = Engine.applyAction(clone, a);
+          if (res.ok) {
+            total = Engine.evaluateState(clone, playerId) * 2.1 + total * 0.15;
+            // light 2nd glance: if still our turn, peek best child heuristically
+            if (clone.active === playerId && clone.winner == null) {
+              const child = Engine.listLegalPlays(clone);
+              let childBest = -1e9;
+              for (let i = 0; i < Math.min(child.length, 12); i++) {
+                const c2 = Engine.cloneState(clone);
+                const r2 = Engine.applyAction(c2, child[i]);
+                if (r2.ok) childBest = Math.max(childBest, Engine.evaluateState(c2, playerId));
+              }
+              if (childBest > -1e8) total = total * 0.45 + childBest * 0.7;
+            }
+          }
+        } catch (_) {}
+      }
+      const noise =
+        ((hash(state.seed + "|" + state.turn + "|" + JSON.stringify(a)) % 1000) / 1000) * profile.confNoise;
+      total += noise;
+      if (total > bestScore) {
+        bestScore = total;
+        best = a;
+      }
+    }
+    return best || { kind: "end_turn" };
+  }
+
+  function takeFullTurn(state, playerId, difficulty) {
+    const results = [];
+    let guard = 40;
+    while (state.winner == null && state.active === playerId && guard-- > 0) {
+      const action = chooseAction(state, playerId, difficulty);
+      const res = Engine.applyAction(state, action);
+      results.push({ action, res });
+      if (action.kind === "end_turn") break;
+      if (!res.ok) {
+        Engine.applyAction(state, { kind: "end_turn" });
+        break;
+      }
+    }
+    return results;
+  }
+
+  return { chooseAction, takeFullTurn, scoreAction, PROFILES };
+});
+
+</script>
+  <script>
+/**
+ * Holdfast — leaders, collection, packs, deck editor, save/export.
+ * Progress in localStorage + export/import code (no purchases).
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) {
+    module.exports = factory(require("./cards.js"));
+  } else {
+    root.HoldfastMeta = factory(root.HoldfastCards);
+  }
+})(typeof globalThis !== "undefined" ? globalThis : this, function (Cards) {
+  "use strict";
+
+  const SAVE_KEY = "holdfast_save_v1";
+  const DECK_SIZE = 24;
+  const MAX_COPIES = 2;
+  const MAX_LEGENDARY = 1;
+
+  /** Rarity weights for packs */
+  const RARITY = { common: "common", rare: "rare", epic: "epic", legendary: "legendary" };
+  const PACK_SLOTS = 5; // cards per pack
+  const PACK_WEIGHTS = { common: 70, rare: 22, epic: 7, legendary: 1 };
+
+  /** Card rarity map (defaults common). Stronger cards higher rarity. */
+  const CARD_RARITY = {
+    n_scout: "common", n_runner: "common", n_medic: "common", n_supply: "common",
+    n_shot: "common", n_rally: "rare", n_frag: "rare",
+    rb_rifle: "common", rb_aid: "common", rb_shield: "common", rb_entrench: "common",
+    rb_medic_tent: "common", rb_sergeant: "rare", rb_banner: "rare", rb_heavy: "rare",
+    rb_mortar: "rare", rb_reinforce: "epic", rb_barrage: "epic", rb_colonel: "epic",
+    rb_armor: "legendary",
+    bo_infil: "common", bo_recon: "common", bo_raider: "common", bo_saboteur: "common",
+    bo_smoke: "common", bo_intel: "rare", bo_striker: "rare", bo_ambush: "rare",
+    bo_assault: "rare", bo_commando: "epic", bo_breach: "epic", bo_ghost: "epic",
+    bo_overkill: "legendary", bo_vanguard: "legendary",
+    tok_recruit: "common",
+    // leader signature cards
+    ld_iron_pulse: "epic", ld_aegis: "epic", ld_banner_call: "rare",
+    ld_shadow_sting: "epic", ld_wire_cut: "rare", ld_intel_surge: "epic",
+  };
+
+  function rarityOf(id) {
+    return CARD_RARITY[id] || "common";
+  }
+
+  /**
+   * Leaders: 3 Red Banner + 3 Black Ops.
+   * power: { id, name, text, cost, cooldown } — active hero power
+   * passive: optional text (engine hooks by leader id)
+   * starter: deck list of 24 card defIds
+   */
+  const LEADERS = [
+    {
+      id: "iron_marshal",
+      name: "Iron Marshal",
+      faction: "red",
+      blurb: "Hold the line. Mend the ranks.",
+      passive: "Your Guards enter with +0/+1.",
+      power: { id: "field_dress", name: "Field Dress", text: "Heal your commander 2.", cost: 2, cooldown: 1 },
+      starter: [
+        "n_scout","n_scout","n_medic","n_supply","n_supply","n_shot","n_rally",
+        "rb_rifle","rb_rifle","rb_aid","rb_shield","rb_shield","rb_entrench","rb_medic_tent",
+        "rb_sergeant","rb_banner","rb_heavy","rb_mortar","rb_reinforce","rb_barrage",
+        "rb_colonel","n_runner","n_frag","ld_iron_pulse",
+      ],
+    },
+    {
+      id: "shield_mother",
+      name: "Shield Mother",
+      faction: "red",
+      blurb: "Walls of will and steel.",
+      passive: "Once per turn, the first Guard you play costs 1 less (min 0).",
+      power: { id: "brace", name: "Brace", text: "Give a friendly soldier +0/+2.", cost: 2, cooldown: 1 },
+      starter: [
+        "n_scout","n_medic","n_medic","n_supply","n_ward".replace("n_ward","n_shot"),"n_shot","n_rally","n_frag",
+        "rb_rifle","rb_rifle","rb_aid","rb_shield","rb_shield","rb_entrench","rb_entrench",
+        "rb_banner","rb_heavy","rb_heavy","rb_armor","rb_medic_tent","rb_sergeant",
+        "rb_colonel","n_runner","ld_aegis",
+      ],
+    },
+    {
+      id: "banner_saint",
+      name: "Banner Saint",
+      faction: "red",
+      blurb: "Raise the colors. Raise morale.",
+      passive: "Friendly soldiers have +1 Attack while you control a Guard.",
+      power: { id: "rally_flag", name: "Rally Flag", text: "Summon a 1/1 Rifle Recruit.", cost: 3, cooldown: 1 },
+      starter: [
+        "n_scout","n_runner","n_supply","n_supply","n_shot","n_rally","n_rally",
+        "rb_rifle","rb_rifle","rb_aid","rb_shield","rb_banner","rb_banner","rb_sergeant",
+        "rb_heavy","rb_mortar","rb_reinforce","rb_reinforce","rb_barrage","rb_colonel",
+        "n_medic","n_frag","rb_medic_tent","ld_banner_call",
+      ],
+    },
+    {
+      id: "night_phantom",
+      name: "Night Phantom",
+      faction: "black",
+      blurb: "Strike first. Vanish.",
+      passive: "Your first face attack each game deals +1.",
+      power: { id: "shadow_stab", name: "Shadow Stab", text: "Deal 1 to the enemy commander.", cost: 2, cooldown: 0 },
+      starter: [
+        "n_scout","n_runner","n_supply","n_supply","n_shot","n_frag",
+        "bo_infil","bo_infil","bo_recon","bo_raider","bo_saboteur","bo_smoke","bo_intel",
+        "bo_striker","bo_ambush","bo_assault","bo_commando","bo_breach","bo_ghost",
+        "bo_overkill","n_scout","bo_recon","n_shot","ld_shadow_sting",
+      ],
+    },
+    {
+      id: "wire_cutter",
+      name: "Wire Cutter",
+      faction: "black",
+      blurb: "Cut supply. Cut throats.",
+      passive: "Enemy Guards lose 1 Health when they enter (min 1).",
+      power: { id: "sabotage", name: "Sabotage", text: "Deal 2 to an enemy soldier.", cost: 2, cooldown: 1 },
+      starter: [
+        "n_scout","n_runner","n_supply","n_shot","n_shot","n_frag","n_frag",
+        "bo_infil","bo_raider","bo_saboteur","bo_saboteur","bo_smoke","bo_intel",
+        "bo_striker","bo_ambush","bo_ambush","bo_assault","bo_commando","bo_breach",
+        "bo_vanguard","bo_recon","n_supply","bo_ghost","ld_wire_cut",
+      ],
+    },
+    {
+      id: "shadow_broker",
+      name: "Shadow Broker",
+      faction: "black",
+      blurb: "Information kills.",
+      passive: "The first Order you play each turn costs 1 less (min 0).",
+      power: { id: "leak", name: "Leak", text: "Draw a card.", cost: 3, cooldown: 1 },
+      starter: [
+        "n_scout","n_runner","n_runner","n_supply","n_supply","n_shot","n_rally",
+        "bo_infil","bo_recon","bo_recon","bo_raider","bo_smoke","bo_intel","bo_intel",
+        "bo_striker","bo_ambush","bo_commando","bo_breach","bo_ghost","bo_overkill",
+        "bo_assault","n_frag","bo_saboteur","ld_intel_surge",
+      ],
+    },
+  ];
+
+  // Fix shield_mother starter (cleanup the hacky replace)
+  LEADERS[1].starter = [
+    "n_scout","n_medic","n_medic","n_supply","n_shot","n_shot","n_rally","n_frag",
+    "rb_rifle","rb_rifle","rb_aid","rb_shield","rb_shield","rb_entrench","rb_entrench",
+    "rb_banner","rb_heavy","rb_heavy","rb_armor","rb_medic_tent","rb_sergeant",
+    "rb_colonel","n_runner","ld_aegis",
+  ];
+
+  /** Signature cards added to pool (also in cards.js ideally — registered here for meta) */
+  const SIGNATURE_DEFS = [
+    { id: "ld_iron_pulse", name: "Iron Pulse", faction: "red", type: "order", cost: 2, rarity: "epic", text: "Heal your commander 2. Give a friendly soldier +1/+1.", effect: "heal_2_buff_1_1" },
+    { id: "ld_aegis", name: "Aegis Protocol", faction: "red", type: "order", cost: 3, rarity: "epic", text: "Give all friendly Guards +0/+2.", effect: "buff_guards_0_2" },
+    { id: "ld_banner_call", name: "Banner Call", faction: "red", type: "order", cost: 2, rarity: "rare", text: "Draw a card. If you control a Guard, draw another.", effect: "draw_1_if_guard_draw" },
+    { id: "ld_shadow_sting", name: "Shadow Sting", faction: "black", type: "order", cost: 1, rarity: "epic", text: "Deal 2 to the enemy commander.", effect: "face_2" },
+    { id: "ld_wire_cut", name: "Wire Cut", faction: "black", type: "order", cost: 2, rarity: "rare", text: "Deal 3 to an enemy Guard (or 2 to any enemy soldier).", effect: "damage_guard_3_or_2" },
+    { id: "ld_intel_surge", name: "Intel Surge", faction: "black", type: "order", cost: 3, rarity: "epic", text: "Draw 2 cards.", effect: "draw_2" },
+  ];
+
+  function registerSignatures() {
+    if (!Cards || !Cards.BY_ID) return;
+    for (const d of SIGNATURE_DEFS) {
+      if (!Cards.BY_ID[d.id]) {
+        Cards.DEFS.push(d);
+        Cards.BY_ID[d.id] = d;
+      }
+      CARD_RARITY[d.id] = d.rarity || "epic";
+    }
+  }
+  registerSignatures();
+
+  const BY_LEADER = Object.create(null);
+  for (const L of LEADERS) BY_LEADER[L.id] = L;
+
+  function defaultSave() {
+    const owned = Object.create(null);
+    // Unlock all commons in starter pools + signatures minimally via starter packs
+    for (const L of LEADERS) {
+      for (const id of L.starter) owned[id] = Math.max(owned[id] || 0, 2);
+    }
+    const decks = {};
+    for (const L of LEADERS) decks[L.id] = L.starter.slice();
+    return {
+      v: 1,
+      packs: 3, // starter packs
+      wins: 0,
+      losses: 0,
+      owned,
+      decks,
+      selectedLeader: "iron_marshal",
+      stats: {},
+      leaderProg: {},
+      mode: "ai",
+      difficulty: "normal",
+    };
+  }
+
+  function loadSave() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return defaultSave();
+      const s = JSON.parse(raw);
+      if (!s || s.v !== 1) return defaultSave();
+      // ensure leaders present
+      for (const L of LEADERS) {
+        if (!s.decks[L.id]) s.decks[L.id] = L.starter.slice();
+      }
+      if (!s.owned) s.owned = {};
+      if (s.packs == null) s.packs = 0;
+      return s;
+    } catch (_) {
+      return defaultSave();
+    }
+  }
+
+  function persist(save) {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+    } catch (_) {}
+  }
+
+  function exportCode(save) {
+    const json = JSON.stringify(save);
+    // base64url
+    const b64 = typeof btoa === "function"
+      ? btoa(unescape(encodeURIComponent(json)))
+      : Buffer.from(json, "utf8").toString("base64");
+    return "HF1." + b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function importCode(code) {
+    if (!code || typeof code !== "string") throw new Error("empty");
+    let b64 = code.trim();
+    if (b64.indexOf("HF1.") === 0) b64 = b64.slice(4);
+    b64 = b64.replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    const json = typeof atob === "function"
+      ? decodeURIComponent(escape(atob(b64)))
+      : Buffer.from(b64, "base64").toString("utf8");
+    const s = JSON.parse(json);
+    if (!s || s.v !== 1) throw new Error("bad version");
+    persist(s);
+    return s;
+  }
+
+  function ownedCount(save, id) {
+    return (save.owned && save.owned[id]) || 0;
+  }
+
+  function addCard(save, id, n) {
+    n = n || 1;
+    save.owned[id] = (save.owned[id] || 0) + n;
+  }
+
+  function validateDeck(deck, save) {
+    const errors = [];
+    if (!deck || deck.length !== DECK_SIZE) errors.push("Deck must be " + DECK_SIZE + " cards (have " + (deck ? deck.length : 0) + ").");
+    const counts = Object.create(null);
+    let legendaries = 0;
+    for (const id of deck || []) {
+      if (!Cards.BY_ID[id]) errors.push("Unknown card " + id);
+      counts[id] = (counts[id] || 0) + 1;
+      if (rarityOf(id) === "legendary") legendaries++;
+      if (save && ownedCount(save, id) < counts[id]) errors.push("Not enough copies of " + id);
+    }
+    for (const id of Object.keys(counts)) {
+      const max = rarityOf(id) === "legendary" ? MAX_LEGENDARY : MAX_COPIES;
+      if (counts[id] > max) errors.push(id + " exceeds copy limit (" + max + ")");
+    }
+    if (legendaries > 2) errors.push("Too many legendary copies in deck.");
+    return { ok: errors.length === 0, errors };
+  }
+
+  function weightedRarity(rng) {
+    const r = (rng || Math.random)() * 100;
+    let acc = 0;
+    for (const k of ["common", "rare", "epic", "legendary"]) {
+      acc += PACK_WEIGHTS[k];
+      if (r < acc) return k;
+    }
+    return "common";
+  }
+
+  function poolForRarity(rarity, factionPrefer) {
+    const pool = [];
+    const ids = Object.keys(CARD_RARITY);
+    for (const id of ids) {
+      if (id === "tok_recruit") continue;
+      if (rarityOf(id) !== rarity) continue;
+      const d = Cards.BY_ID[id];
+      if (!d) continue;
+      pool.push(id);
+    }
+    if (!pool.length) {
+      // fallback commons
+      return Object.keys(CARD_RARITY).filter((id) => rarityOf(id) === "common" && id !== "tok_recruit");
+    }
+    return pool;
+  }
+
+  function openPack(save, rng) {
+    rng = rng || Math.random;
+    if ((save.packs || 0) <= 0) return { ok: false, error: "No packs" };
+    save.packs -= 1;
+    const cards = [];
+    // Guarantee at least one rare+
+    let guaranteed = false;
+    for (let i = 0; i < PACK_SLOTS; i++) {
+      let rar = weightedRarity(rng);
+      if (i === PACK_SLOTS - 1 && !guaranteed && rar === "common") rar = "rare";
+      if (rar !== "common") guaranteed = true;
+      const pool = poolForRarity(rar);
+      const id = pool[Math.floor(rng() * pool.length)];
+      cards.push({ id, rarity: rarityOf(id), name: (Cards.BY_ID[id] || {}).name || id });
+      addCard(save, id, 1);
+    }
+    persist(save);
+    return { ok: true, cards };
+  }
+
+  function awardMatch(save, won) {
+    if (won) {
+      save.wins = (save.wins || 0) + 1;
+      save.packs = (save.packs || 0) + 1;
+    } else {
+      save.losses = (save.losses || 0) + 1;
+      // half reward: every 2 losses -> 1 pack
+      save._lossBank = (save._lossBank || 0) + 1;
+      if (save._lossBank >= 2) {
+        save._lossBank = 0;
+        save.packs = (save.packs || 0) + 1;
+      }
+    }
+    persist(save);
+    return save;
+  }
+
+  function getDeck(save, leaderId) {
+    const d = (save.decks && save.decks[leaderId]) || (BY_LEADER[leaderId] && BY_LEADER[leaderId].starter) || [];
+    return d.slice();
+  }
+
+  function setDeck(save, leaderId, deck) {
+    const v = validateDeck(deck, save);
+    if (!v.ok) return v;
+    save.decks[leaderId] = deck.slice();
+    persist(save);
+    return { ok: true };
+  }
+
+  function leadersForFaction(fac) {
+    return LEADERS.filter((L) => L.faction === fac);
+  }
+
+  function pickAiLeader(playerLeaderId, rng) {
+    rng = rng || Math.random;
+    const player = BY_LEADER[playerLeaderId];
+    const oppFac = player && player.faction === "red" ? "black" : "red";
+    const pool = leadersForFaction(oppFac);
+    return pool[Math.floor(rng() * pool.length)] || LEADERS[3];
+  }
+
+
+  const XP_TABLE = [0, 50, 120, 220, 350, 500, 700]; // index = level (1-based uses XP_TABLE[level-1])
+  const MAX_LEVEL = 6;
+
+  /** Sidegrade power variants (equal power, different axis). Keyed by base power id. */
+  const POWER_VARIANTS = {
+    field_dress: [
+      { id: "field_dress", name: "Field Dress", text: "Heal your commander 2.", cost: 2, cooldown: 1 },
+      { id: "field_dress_b", name: "Triage", text: "Heal 1 and draw a card.", cost: 2, cooldown: 1 },
+    ],
+    brace: [
+      { id: "brace", name: "Brace", text: "Give a friendly soldier +0/+2.", cost: 2, cooldown: 1 },
+      { id: "brace_b", name: "Fortify", text: "Give a friendly soldier +1/+1.", cost: 2, cooldown: 1 },
+    ],
+    rally_flag: [
+      { id: "rally_flag", name: "Rally Flag", text: "Summon a 1/1 Rifle Recruit.", cost: 3, cooldown: 1 },
+      { id: "rally_flag_b", name: "Shock Recruit", text: "Summon a 2/1 Rifle Recruit.", cost: 3, cooldown: 1 },
+    ],
+    shadow_stab: [
+      { id: "shadow_stab", name: "Shadow Stab", text: "Deal 1 to the enemy commander.", cost: 2, cooldown: 0 },
+      { id: "shadow_stab_b", name: "Deep Cut", text: "Deal 2 to the enemy commander.", cost: 2, cooldown: 1 },
+    ],
+    sabotage: [
+      { id: "sabotage", name: "Sabotage", text: "Deal 2 to an enemy soldier.", cost: 2, cooldown: 1 },
+      { id: "sabotage_b", name: "Breach Spike", text: "Deal 1 to an enemy soldier and 1 to their commander.", cost: 2, cooldown: 1 },
+    ],
+    leak: [
+      { id: "leak", name: "Leak", text: "Draw a card.", cost: 3, cooldown: 1 },
+      { id: "leak_b", name: "Poisoned Leak", text: "Draw a card. Enemy commander takes 1.", cost: 3, cooldown: 1 },
+    ],
+  };
+
+  function levelFromXp(xp) {
+    xp = xp || 0;
+    let lvl = 1;
+    for (let i = 1; i < XP_TABLE.length; i++) {
+      if (xp >= XP_TABLE[i]) lvl = i + 1;
+    }
+    return Math.min(MAX_LEVEL, lvl);
+  }
+
+  function xpProgress(xp) {
+    const lvl = levelFromXp(xp);
+    if (lvl >= MAX_LEVEL) return { level: MAX_LEVEL, xp, into: 0, need: 0, pct: 1 };
+    const lo = XP_TABLE[lvl - 1];
+    const hi = XP_TABLE[lvl];
+    const into = xp - lo;
+    const need = hi - lo;
+    return { level: lvl, xp, into, need, pct: need ? into / need : 1 };
+  }
+
+  function ensureLeaderProg(save, leaderId) {
+    if (!save.leaderProg) save.leaderProg = {};
+    if (!save.leaderProg[leaderId]) {
+      save.leaderProg[leaderId] = { xp: 0, powerVariant: 0, pendingChoice: null };
+    }
+    return save.leaderProg[leaderId];
+  }
+
+  function grantLeaderXp(save, leaderId, won) {
+    const prog = ensureLeaderProg(save, leaderId);
+    const before = levelFromXp(prog.xp);
+    prog.xp += won ? 30 : 10;
+    const after = levelFromXp(prog.xp);
+    // Milestone ability choice at levels 3 and 5
+    if (after > before && (after === 3 || after === 5)) {
+      prog.pendingChoice = after;
+    }
+    persist(save);
+    return { before, after, prog: xpProgress(prog.xp), pendingChoice: prog.pendingChoice };
+  }
+
+  function getLeaderPower(leaderId, save) {
+    const L = BY_LEADER[leaderId];
+    if (!L) return null;
+    const prog = save ? ensureLeaderProg(save, leaderId) : { powerVariant: 0 };
+    const baseId = L.power.id.replace(/_b$/, "");
+    const variants = POWER_VARIANTS[baseId] || [L.power];
+    const idx = Math.min(prog.powerVariant || 0, variants.length - 1);
+    return variants[idx];
+  }
+
+  function chooseLeaderPower(save, leaderId, variantIndex) {
+    const prog = ensureLeaderProg(save, leaderId);
+    const L = BY_LEADER[leaderId];
+    const baseId = L.power.id.replace(/_b$/, "");
+    const variants = POWER_VARIANTS[baseId] || [L.power];
+    if (variantIndex < 0 || variantIndex >= variants.length) return { ok: false, error: "bad variant" };
+    prog.powerVariant = variantIndex;
+    prog.pendingChoice = null;
+    persist(save);
+    return { ok: true, power: variants[variantIndex] };
+  }
+
+  function frameForLevel(level) {
+    if (level >= 6) return "legendary";
+    if (level >= 5) return "gold";
+    if (level >= 3) return "silver";
+    return "bronze";
+  }
+
+  return {
+    SAVE_KEY,
+    DECK_SIZE,
+    MAX_COPIES,
+    MAX_LEGENDARY,
+    PACK_SLOTS,
+    PACK_WEIGHTS,
+    RARITY,
+    LEADERS,
+    BY_LEADER,
+    SIGNATURE_DEFS,
+    CARD_RARITY,
+    rarityOf,
+    defaultSave,
+    loadSave,
+    persist,
+    exportCode,
+    importCode,
+    ownedCount,
+    addCard,
+    validateDeck,
+    openPack,
+    awardMatch,
+    getDeck,
+    setDeck,
+    leadersForFaction,
+    pickAiLeader,
+    registerSignatures,
+    weightedRarity,
+    poolForRarity,
+    XP_TABLE,
+    MAX_LEVEL,
+    POWER_VARIANTS,
+    levelFromXp,
+    xpProgress,
+    ensureLeaderProg,
+    grantLeaderXp,
+    getLeaderPower,
+    chooseLeaderPower,
+    frameForLevel,
+  };
+});
+
+</script>
+  <script>
+/**
+ * Holdfast — original SVG illustrations (cards, board, emblems, title).
+ * No external assets; each defId has a unique motif.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.HoldfastArt = factory();
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  const PAL = {
+    red: { a: "#ff6b5a", b: "#a83028", c: "#2a0c0c", d: "#ffd0c8", e: "#ffc14a" },
+    black: { a: "#6ec8ff", b: "#2a5088", c: "#081428", d: "#d0e8ff", e: "#a78bfa" },
+    neutral: { a: "#c4b59a", b: "#6a5c48", c: "#1a1814", d: "#efe6d4", e: "#8fbc8f" },
+  };
+
+  function pal(fac) {
+    return PAL[fac] || PAL.neutral;
+  }
+
+  function escId(id) {
+    return String(id || "x").replace(/[^a-z0-9]/gi, "");
+  }
+
+  /** Unique scene per card defId — original fantasy-military vignettes */
+  const SCENES = {
+    n_scout: (p) => `
+      <ellipse cx="32" cy="48" rx="24" ry="4" fill="#000" opacity=".25"/>
+      <path d="M8 40 Q32 28 56 40" fill="none" stroke="${p.b}" stroke-width="2"/>
+      <circle cx="40" cy="18" r="7" fill="${p.d}"/>
+      <rect x="34" y="24" width="12" height="16" rx="2" fill="${p.a}"/>
+      <rect x="46" y="14" width="10" height="3" rx="1" fill="${p.e}"/>
+      <circle cx="50" cy="12" r="2" fill="${p.e}" opacity=".8"/>`,
+    n_runner: (p) => `
+      <path d="M6 44 L58 44" stroke="${p.b}" stroke-width="2"/>
+      <circle cx="28" cy="16" r="6" fill="${p.d}"/>
+      <path d="M22 24 L34 24 L36 40 L20 40 Z" fill="${p.a}"/>
+      <path d="M34 28 L48 22" stroke="${p.e}" stroke-width="3" stroke-linecap="round"/>
+      <path d="M18 30 L8 36" stroke="${p.d}" stroke-width="2"/>`,
+    n_medic: (p) => `
+      <rect x="10" y="18" width="44" height="28" rx="4" fill="${p.b}"/>
+      <rect x="18" y="10" width="28" height="12" rx="2" fill="${p.a}"/>
+      <rect x="28" y="24" width="8" height="16" fill="${p.d}"/>
+      <rect x="22" y="28" width="20" height="8" fill="${p.d}"/>
+      <circle cx="32" cy="16" r="3" fill="#fff" opacity=".9"/>`,
+    n_supply: (p) => `
+      <rect x="14" y="20" width="36" height="26" rx="3" fill="${p.b}"/>
+      <path d="M14 26 H50" stroke="${p.e}" stroke-width="2"/>
+      <path d="M22 14 L32 8 L42 14 L42 22 H22 Z" fill="${p.a}"/>
+      <circle cx="32" cy="34" r="6" fill="${p.d}" opacity=".7"/>`,
+    n_shot: (p) => `
+      <circle cx="18" cy="28" r="8" fill="${p.b}"/>
+      <path d="M24 28 L52 16" stroke="${p.e}" stroke-width="3"/>
+      <path d="M48 14 L56 12 L54 20" fill="${p.e}"/>
+      <circle cx="52" cy="16" r="3" fill="#fff" opacity=".9"/>
+      <path d="M8 44 H56" stroke="${p.a}" stroke-width="2" opacity=".5"/>`,
+    n_rally: (p) => `
+      <path d="M18 48 L32 10 L46 48 Z" fill="${p.b}"/>
+      <path d="M32 10 L32 48" stroke="${p.e}" stroke-width="3"/>
+      <path d="M32 12 L50 20 L32 28 Z" fill="${p.a}"/>
+      <circle cx="32" cy="18" r="3" fill="${p.d}"/>`,
+    n_frag: (p) => `
+      <circle cx="32" cy="30" r="10" fill="${p.b}"/>
+      <circle cx="32" cy="30" r="6" fill="${p.a}"/>
+      ${[0,45,90,135,180,225,270,315].map((a)=>{const r=a*Math.PI/180;const x=32+Math.cos(r)*20;const y=30+Math.sin(r)*16;return `<line x1="32" y1="30" x2="${x}" y2="${y}" stroke="${p.e}" stroke-width="2"/>`;}).join("")}`,
+    rb_rifle: (p) => `
+      <rect x="8" y="30" width="40" height="6" rx="2" fill="${p.b}"/>
+      <rect x="44" y="28" width="12" height="4" fill="${p.a}"/>
+      <circle cx="22" cy="18" r="7" fill="${p.d}"/>
+      <rect x="16" y="24" width="14" height="18" rx="2" fill="${p.a}"/>
+      <rect x="12" y="36" width="8" height="10" fill="${p.b}"/>`,
+    rb_aid: (p) => `
+      <rect x="18" y="14" width="28" height="32" rx="4" fill="${p.d}"/>
+      <rect x="28" y="20" width="8" height="20" fill="${p.a}"/>
+      <rect x="22" y="26" width="20" height="8" fill="${p.a}"/>
+      <circle cx="32" cy="12" r="4" fill="${p.e}"/>`,
+    rb_shield: (p) => `
+      <path d="M32 6 L52 16 L52 34 Q32 52 12 34 L12 16 Z" fill="${p.b}" stroke="${p.e}" stroke-width="2"/>
+      <path d="M32 14 L44 20 L44 32 Q32 44 20 32 L20 20 Z" fill="${p.a}" opacity=".85"/>
+      <circle cx="32" cy="28" r="5" fill="${p.d}"/>`,
+    rb_entrench: (p) => `
+      <path d="M4 40 H60" stroke="${p.b}" stroke-width="4"/>
+      <path d="M10 40 L16 24 H28 L34 40" fill="${p.a}"/>
+      <path d="M36 40 L42 28 H52 L56 40" fill="${p.b}"/>
+      <rect x="20" y="18" width="6" height="10" fill="${p.e}"/>`,
+    rb_medic_tent: (p) => `
+      <path d="M8 44 L32 10 L56 44 Z" fill="${p.d}"/>
+      <path d="M32 10 L32 44" stroke="${p.a}" stroke-width="3"/>
+      <rect x="28" y="22" width="8" height="16" fill="${p.a}"/>
+      <rect x="22" y="28" width="20" height="8" fill="${p.a}"/>`,
+    rb_sergeant: (p) => `
+      <circle cx="32" cy="14" r="8" fill="${p.d}"/>
+      <rect x="22" y="22" width="20" height="22" rx="3" fill="${p.a}"/>
+      <path d="M22 26 H42" stroke="${p.e}" stroke-width="2"/>
+      <path d="M22 32 H42" stroke="${p.e}" stroke-width="2"/>
+      <rect x="14" y="28" width="8" height="5" fill="${p.b}"/>
+      <rect x="42" y="28" width="8" height="5" fill="${p.b}"/>`,
+    rb_banner: (p) => `
+      <rect x="28" y="8" width="5" height="42" fill="${p.b}"/>
+      <path d="M33 10 H54 L48 22 L54 34 H33 Z" fill="${p.a}"/>
+      <circle cx="20" cy="36" r="6" fill="${p.d}"/>
+      <rect x="14" y="40" width="12" height="10" fill="${p.b}"/>`,
+    rb_heavy: (p) => `
+      <rect x="16" y="16" width="32" height="28" rx="4" fill="${p.b}"/>
+      <rect x="20" y="20" width="24" height="20" rx="2" fill="${p.a}"/>
+      <circle cx="32" cy="12" r="7" fill="${p.d}"/>
+      <rect x="10" y="24" width="8" height="14" rx="2" fill="${p.e}"/>
+      <rect x="46" y="24" width="8" height="14" rx="2" fill="${p.e}"/>`,
+    rb_mortar: (p) => `
+      <path d="M12 44 H52" stroke="${p.b}" stroke-width="3"/>
+      <rect x="24" y="18" width="10" height="26" rx="2" transform="rotate(-25 29 31)" fill="${p.a}"/>
+      <circle cx="40" cy="16" r="5" fill="${p.e}"/>
+      <path d="M40 16 Q50 8 56 14" fill="none" stroke="${p.d}" stroke-width="2"/>`,
+    rb_reinforce: (p) => `
+      <circle cx="18" cy="30" r="8" fill="${p.a}" opacity=".9"/>
+      <circle cx="32" cy="26" r="9" fill="${p.b}"/>
+      <circle cx="46" cy="30" r="8" fill="${p.a}" opacity=".9"/>
+      <path d="M8 44 H56" stroke="${p.e}" stroke-width="2"/>
+      <path d="M32 8 L36 18 H28 Z" fill="${p.e}"/>`,
+    rb_barrage: (p) => `
+      <path d="M8 40 Q20 10 32 40 Q44 10 56 40" fill="none" stroke="${p.e}" stroke-width="3"/>
+      <circle cx="20" cy="14" r="4" fill="${p.a}"/>
+      <circle cx="32" cy="10" r="4" fill="${p.a}"/>
+      <circle cx="44" cy="14" r="4" fill="${p.a}"/>
+      <path d="M4 46 H60" stroke="${p.b}" stroke-width="2"/>`,
+    rb_colonel: (p) => `
+      <circle cx="32" cy="14" r="9" fill="${p.d}"/>
+      <path d="M18 24 H46 L42 48 H22 Z" fill="${p.a}"/>
+      <path d="M24 28 H40" stroke="${p.e}" stroke-width="2"/>
+      <path d="M26 8 L32 2 L38 8" fill="${p.e}"/>
+      <circle cx="32" cy="14" r="3" fill="${p.e}"/>`,
+    rb_armor: (p) => `
+      <rect x="10" y="22" width="44" height="22" rx="4" fill="${p.b}"/>
+      <rect x="14" y="16" width="36" height="14" rx="3" fill="${p.a}"/>
+      <circle cx="20" cy="40" r="7" fill="${p.c}" stroke="${p.e}" stroke-width="2"/>
+      <circle cx="44" cy="40" r="7" fill="${p.c}" stroke="${p.e}" stroke-width="2"/>
+      <rect x="28" y="20" width="8" height="10" fill="${p.d}"/>`,
+    bo_infil: (p) => `
+      <path d="M10 40 Q32 20 54 40" fill="none" stroke="${p.b}" stroke-width="2" stroke-dasharray="4 3"/>
+      <circle cx="36" cy="18" r="6" fill="${p.d}"/>
+      <path d="M30 24 L42 24 L44 40 L28 40 Z" fill="${p.a}"/>
+      <path d="M42 28 L54 22" stroke="${p.e}" stroke-width="2"/>`,
+    bo_recon: (p) => `
+      <circle cx="32" cy="28" r="16" fill="none" stroke="${p.a}" stroke-width="2"/>
+      <circle cx="32" cy="28" r="8" fill="none" stroke="${p.e}" stroke-width="2"/>
+      <circle cx="32" cy="28" r="3" fill="${p.d}"/>
+      <path d="M32 8 V14 M32 42 V48 M8 28 H14 M50 28 H56" stroke="${p.b}" stroke-width="2"/>`,
+    bo_raider: (p) => `
+      <path d="M8 44 L28 20 L36 28 L56 12" fill="none" stroke="${p.e}" stroke-width="3"/>
+      <circle cx="28" cy="16" r="6" fill="${p.d}"/>
+      <path d="M22 22 L34 22 L38 42 L18 42 Z" fill="${p.a}"/>`,
+    bo_saboteur: (p) => `
+      <rect x="22" y="24" width="20" height="16" rx="2" fill="${p.b}"/>
+      <circle cx="32" cy="32" r="5" fill="${p.a}"/>
+      <path d="M32 16 V24" stroke="${p.e}" stroke-width="2"/>
+      <path d="M24 12 H40" stroke="${p.e}" stroke-width="2"/>
+      <circle cx="32" cy="10" r="3" fill="${p.d}"/>`,
+    bo_smoke: (p) => `
+      <circle cx="22" cy="28" r="12" fill="${p.b}" opacity=".7"/>
+      <circle cx="36" cy="24" r="14" fill="${p.a}" opacity=".55"/>
+      <circle cx="44" cy="34" r="10" fill="${p.d}" opacity=".4"/>
+      <path d="M12 46 H52" stroke="${p.e}" stroke-width="2" opacity=".5"/>`,
+    bo_intel: (p) => `
+      <rect x="14" y="12" width="36" height="36" rx="3" fill="${p.d}"/>
+      <path d="M20 22 H44 M20 30 H40 M20 38 H36" stroke="${p.b}" stroke-width="2"/>
+      <circle cx="48" cy="14" r="6" fill="${p.a}"/>
+      <path d="M46 14 H50 M48 12 V16" stroke="#fff" stroke-width="1.5"/>`,
+    bo_striker: (p) => `
+      <path d="M8 36 Q32 8 56 36" fill="${p.c}"/>
+      <circle cx="32" cy="20" r="7" fill="${p.d}"/>
+      <path d="M24 28 L40 28 L42 46 L22 46 Z" fill="${p.a}"/>
+      <path d="M40 32 L54 24" stroke="${p.e}" stroke-width="3"/>`,
+    bo_ambush: (p) => `
+      <path d="M6 48 L20 20 L28 28 L44 8 L58 48 Z" fill="${p.b}" opacity=".5"/>
+      <path d="M24 40 L40 18" stroke="${p.e}" stroke-width="3"/>
+      <circle cx="40" cy="18" r="4" fill="${p.a}"/>
+      <circle cx="18" cy="36" r="5" fill="${p.d}" opacity=".8"/>`,
+    bo_assault: (p) => `
+      <circle cx="20" cy="28" r="7" fill="${p.a}"/>
+      <circle cx="34" cy="24" r="8" fill="${p.b}"/>
+      <circle cx="48" cy="28" r="7" fill="${p.a}"/>
+      <path d="M12 40 H52" stroke="${p.e}" stroke-width="2"/>
+      <path d="M34 8 L38 16 H30 Z" fill="${p.e}"/>`,
+    bo_commando: (p) => `
+      <circle cx="32" cy="14" r="8" fill="${p.d}"/>
+      <rect x="22" y="22" width="20" height="20" rx="3" fill="${p.a}"/>
+      <path d="M18 26 L8 20" stroke="${p.e}" stroke-width="3"/>
+      <path d="M46 26 L56 20" stroke="${p.e}" stroke-width="3"/>
+      <rect x="26" y="42" width="5" height="8" fill="${p.b}"/>
+      <rect x="34" y="42" width="5" height="8" fill="${p.b}"/>`,
+    bo_breach: (p) => `
+      <path d="M8 20 H28 V44 H8 Z" fill="${p.b}"/>
+      <path d="M28 20 L48 12 L56 44 H28 Z" fill="${p.a}" opacity=".85"/>
+      <circle cx="40" cy="28" r="6" fill="${p.e}"/>
+      <path d="M40 28 L52 20" stroke="#fff" stroke-width="2"/>`,
+    bo_ghost: (p) => `
+      <ellipse cx="32" cy="30" rx="16" ry="20" fill="${p.b}" opacity=".55"/>
+      <circle cx="32" cy="18" r="8" fill="${p.d}" opacity=".85"/>
+      <path d="M20 30 Q32 44 44 30" fill="${p.a}" opacity=".6"/>
+      <circle cx="28" cy="18" r="2" fill="${p.c}"/>
+      <circle cx="36" cy="18" r="2" fill="${p.c}"/>`,
+    bo_overkill: (p) => `
+      <circle cx="32" cy="28" r="18" fill="${p.a}" opacity=".35"/>
+      <circle cx="32" cy="28" r="12" fill="${p.b}"/>
+      <path d="M32 12 L36 28 L32 44 L28 28 Z" fill="${p.e}"/>
+      <path d="M12 28 H52" stroke="${p.d}" stroke-width="2"/>`,
+    bo_vanguard: (p) => `
+      <path d="M32 6 L50 48 L32 40 L14 48 Z" fill="${p.a}"/>
+      <path d="M32 12 L42 40 L32 34 L22 40 Z" fill="${p.e}"/>
+      <circle cx="32" cy="24" r="4" fill="${p.d}"/>`,
+    ld_iron_pulse: (p) => `
+      <circle cx="32" cy="28" r="14" fill="${p.a}" opacity=".3"/><circle cx="32" cy="28" r="8" fill="${p.e}"/><path d="M32 10 V46 M14 28 H50" stroke="${p.d}" stroke-width="3"/><circle cx="32" cy="28" r="3" fill="#fff"/>`,
+    ld_aegis: (p) => `
+      <path d="M32 6 L54 16 V34 Q32 52 10 34 V16 Z" fill="${p.b}" stroke="${p.e}" stroke-width="2"/><path d="M32 14 L46 20 V32 Q32 44 18 32 V20 Z" fill="${p.a}" opacity=".8"/><text x="32" y="34" text-anchor="middle" fill="${p.d}" font-size="10" font-weight="700">A</text>`,
+    ld_banner_call: (p) => `
+      <rect x="30" y="8" width="4" height="40" fill="${p.b}"/><path d="M34 10 H56 L50 22 L56 34 H34 Z" fill="${p.a}"/><circle cx="20" cy="36" r="6" fill="${p.d}"/><circle cx="12" cy="40" r="5" fill="${p.d}" opacity=".8"/>`,
+    ld_shadow_sting: (p) => `
+      <path d="M12 40 L48 12" stroke="${p.a}" stroke-width="3"/><path d="M44 10 L56 8 L52 18 Z" fill="${p.e}"/><circle cx="20" cy="36" r="8" fill="${p.b}" opacity=".5"/>`,
+    ld_wire_cut: (p) => `
+      <path d="M10 20 H54" stroke="${p.d}" stroke-width="2" stroke-dasharray="4 3"/><path d="M10 36 H54" stroke="${p.d}" stroke-width="2" stroke-dasharray="4 3"/><path d="M28 12 L40 44" stroke="${p.e}" stroke-width="3"/><circle cx="34" cy="28" r="4" fill="${p.a}"/>`,
+    ld_intel_surge: (p) => `
+      <rect x="14" y="12" width="36" height="32" rx="3" fill="${p.b}"/><path d="M20 20 H44 M20 28 H40 M20 36 H36" stroke="${p.e}" stroke-width="2"/><circle cx="48" cy="16" r="6" fill="${p.a}"/><text x="48" y="19" text-anchor="middle" fill="#fff" font-size="8">!</text>`,
+    tok_recruit: (p) => `
+      <circle cx="32" cy="16" r="7" fill="${p.d}"/>
+      <rect x="24" y="24" width="16" height="18" rx="2" fill="${p.a}"/>
+      <rect x="22" y="42" width="6" height="8" fill="${p.b}"/>
+      <rect x="36" y="42" width="6" height="8" fill="${p.b}"/>
+      <path d="M40 28 L50 24" stroke="${p.e}" stroke-width="2"/>`,
+  };
+
+  function cardArtSvg(c) {
+    const fac = c.faction === "neutral" ? "neutral" : c.faction;
+    const p = pal(fac);
+    const id = c.defId || "x";
+    const gid = "cg" + escId(id) + (c.instanceId ? escId(String(c.instanceId).slice(-6)) : "");
+    const scene = (SCENES[id] || SCENES.n_scout)(p);
+    const rare = (c.cost || 0) >= 5;
+    return `<svg viewBox="0 0 64 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${p.c}"/>
+          <stop offset="100%" stop-color="${p.b}"/>
+        </linearGradient>
+        ${rare ? `<filter id="glow${gid}"><feGaussianBlur stdDeviation="1.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>` : ""}
+      </defs>
+      <rect width="64" height="56" fill="url(#${gid})"/>
+      <rect x="1" y="1" width="62" height="54" rx="4" fill="none" stroke="${p.a}" stroke-opacity="${rare ? 0.85 : 0.4}" stroke-width="${rare ? 2 : 1}"/>
+      <g ${rare ? `filter="url(#glow${gid})"` : ""}>${scene}</g>
+    </svg>`;
+  }
+
+  function emblemSvg(faction) {
+    const p = pal(faction);
+    if (faction === "red") {
+      return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="30" fill="${p.c}" stroke="${p.e}" stroke-width="2"/><path d="M32 8 L48 28 L40 28 L40 52 L24 52 L24 28 L16 28 Z" fill="${p.a}"/><circle cx="32" cy="20" r="4" fill="${p.e}"/></svg>`;
+    }
+    return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="32" cy="32" r="30" fill="${p.c}" stroke="${p.a}" stroke-width="2"/><path d="M20 40 L32 12 L44 40 Z" fill="${p.b}"/><path d="M26 40 L32 22 L38 40 Z" fill="${p.a}"/><circle cx="32" cy="36" r="3" fill="${p.d}"/></svg>`;
+  }
+
+
+  const LEADER_MOTIFS = {"iron_marshal":{"helm":"#c45c4a","cloak":"#6a2020","accent":"#ffc14a","title":"Marshal"},"shield_mother":{"helm":"#e8d5c4","cloak":"#8a4038","accent":"#d4af37","title":"Mother"},"banner_saint":{"helm":"#fff0e0","cloak":"#b03030","accent":"#ffe08a","title":"Saint"},"night_phantom":{"helm":"#2a3850","cloak":"#0a1528","accent":"#6ec8ff","title":"Phantom"},"wire_cutter":{"helm":"#3a4858","cloak":"#1a2030","accent":"#a78bfa","title":"Cutter"},"shadow_broker":{"helm":"#4a3a58","cloak":"#181028","accent":"#c4b5fd","title":"Broker"},"raid_boss":{"helm":"#5a3030","cloak":"#2a1010","accent":"#ff6b5a","title":"Titan"}};
+
+  function leaderPortraitSvg(leaderId, frame) {
+    const L = LEADER_MOTIFS[leaderId] || LEADER_MOTIFS.iron_marshal;
+    const meta = (typeof HoldfastMeta !== "undefined" && HoldfastMeta.BY_LEADER && HoldfastMeta.BY_LEADER[leaderId]) || null;
+    const fac = (meta && meta.faction) || (leaderId.indexOf("night") >= 0 || leaderId.indexOf("wire") >= 0 || leaderId.indexOf("shadow") >= 0 || leaderId === "raid_boss" ? "black" : "red");
+    const frames = { bronze: "#a07040", silver: "#c0c8d0", gold: "#ffc14a", legendary: "#c46bff" };
+    const fc = frames[frame] || frames.bronze;
+    const glow = frame === "legendary" || frame === "gold";
+    return `<svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="sky_${escId(leaderId)}" cx="50%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="${fac==="red"?"#4a1810":"#102038"}"/>
+          <stop offset="100%" stop-color="#05080e"/>
+        </radialGradient>
+        <linearGradient id="cloak_${escId(leaderId)}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${L.cloak}"/>
+          <stop offset="100%" stop-color="#050505"/>
+        </linearGradient>
+      </defs>
+      <rect width="96" height="96" rx="12" fill="url(#sky_${escId(leaderId)})"/>
+      <ellipse cx="48" cy="70" rx="40" ry="18" fill="#000" opacity=".45"/>
+      <path d="M8 80 Q48 50 88 82" fill="none" stroke="${L.accent}" stroke-opacity=".15" stroke-width="10"/>
+      <path d="M18 90 Q48 52 78 90 L90 96 L6 96 Z" fill="url(#cloak_${escId(leaderId)})"/>
+      <path d="M28 78 Q48 58 68 78" fill="${L.cloak}" opacity=".7"/>
+      <rect x="40" y="48" width="16" height="14" rx="3" fill="#c4a090"/>
+      <ellipse cx="48" cy="38" rx="16" ry="18" fill="#d4b8a0"/>
+      <path d="M32 38 Q48 12 64 38 L60 42 Q48 28 36 42 Z" fill="${L.helm}"/>
+      <path d="M34 36 Q48 22 62 36" fill="none" stroke="${L.accent}" stroke-width="2" opacity=".8"/>
+      <ellipse cx="42" cy="40" rx="2.2" ry="2.5" fill="#1a1210"/>
+      <ellipse cx="54" cy="40" rx="2.2" ry="2.5" fill="#1a1210"/>
+      <circle cx="42.5" cy="39.5" r="0.7" fill="#fff" opacity=".7"/>
+      <circle cx="54.5" cy="39.5" r="0.7" fill="#fff" opacity=".7"/>
+      <path d="M44 48 Q48 51 52 48" fill="none" stroke="#8a6050" stroke-width="1.2"/>
+      <circle cx="48" cy="68" r="5" fill="${L.accent}" opacity=".9"/>
+      <rect x="3" y="3" width="90" height="90" rx="10" fill="none" stroke="${fc}" stroke-width="${glow?4:2.5}" opacity=".95"/>
+      ${glow ? `<rect x="6" y="6" width="84" height="84" rx="8" fill="none" stroke="${fc}" stroke-width="1" opacity=".4"/>` : ""}
+      <text x="48" y="90" text-anchor="middle" fill="${L.accent}" font-size="7" font-family="system-ui" font-weight="700" opacity=".85">${L.title}</text>
+    </svg>`;
+  }
+
+  function packWrapperSvg() {
+    return `<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pk" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2a1520"/>
+        <stop offset="50%" stop-color="#1a1028"/>
+        <stop offset="100%" stop-color="#0a0814"/>
+      </linearGradient>
+      <linearGradient id="pkseal" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ffc14a"/><stop offset="100%" stop-color="#ff6b5a"/>
+      </linearGradient>
+    </defs>
+    <rect x="8" y="8" width="104" height="144" rx="8" fill="url(#pk)" stroke="#ffc14a" stroke-width="2"/>
+    <rect x="16" y="20" width="88" height="50" rx="4" fill="#0c1420" stroke="#6ec8ff" stroke-opacity=".4"/>
+    <path d="M30 45 L60 28 L90 45 L60 55 Z" fill="#ff6b5a" opacity=".85"/>
+    <path d="M45 45 L60 35 L75 45 L60 50 Z" fill="#6ec8ff" opacity=".85"/>
+    <circle cx="60" cy="100" r="22" fill="url(#pkseal)"/>
+    <text x="60" y="104" text-anchor="middle" fill="#1a0a08" font-size="11" font-family="system-ui" font-weight="800">PACK</text>
+    <text x="60" y="138" text-anchor="middle" fill="#9aa8c0" font-size="8" font-family="system-ui">HOLDFAST</text>
+    <path d="M20 70 H100" stroke="#ffc14a" stroke-opacity=".3" stroke-width="1"/>
+  </svg>`;
+  }
+
+  function boardBgSvg() {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 700" preserveAspectRatio="xMidYMid slice">
+    <defs>
+      <linearGradient id="bf" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#071220"/>
+        <stop offset="35%" stop-color="#0e1c18"/>
+        <stop offset="70%" stop-color="#1a140e"/>
+        <stop offset="100%" stop-color="#120c08"/>
+      </linearGradient>
+      <radialGradient id="glowr" cx="20%" cy="25%" r="40%"><stop offset="0%" stop-color="#ff6b5a" stop-opacity=".18"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <radialGradient id="glowb" cx="80%" cy="30%" r="40%"><stop offset="0%" stop-color="#6ec8ff" stop-opacity=".16"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
+      <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+        <path d="M24 0 H0 V24" fill="none" stroke="#fff" stroke-opacity=".035"/>
+      </pattern>
+    </defs>
+    <rect width="390" height="700" fill="url(#bf)"/>
+    <rect width="390" height="700" fill="url(#glowr)"/>
+    <rect width="390" height="700" fill="url(#glowb)"/>
+    <rect width="390" height="700" fill="url(#grid)"/>
+    <ellipse cx="195" cy="320" rx="170" ry="55" fill="#000" opacity=".4"/>
+    <path d="M0 560 Q100 500 195 540 Q290 580 390 520 L390 700 L0 700 Z" fill="#2a1a10" opacity=".65"/>
+    <path d="M0 580 Q195 620 390 560" fill="none" stroke="#ffc14a" stroke-opacity=".08" stroke-width="6"/>
+    <circle cx="60" cy="120" r="3" fill="#fff" opacity=".25"/>
+    <circle cx="300" cy="90" r="2" fill="#fff" opacity=".2"/>
+    <circle cx="200" cy="60" r="1.5" fill="#fff" opacity=".3"/>
+  </svg>`;
+  }
+
+  function titleArtSvg() {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160">
+    <defs>
+      <linearGradient id="tg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a0808"/><stop offset="45%" stop-color="#0a1424"/><stop offset="100%" stop-color="#141008"/></linearGradient>
+      <linearGradient id="tt" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#ff8a5a"/><stop offset="50%" stop-color="#ffc14a"/><stop offset="100%" stop-color="#6ec8ff"/></linearGradient>
+      <filter id="glowt"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <rect width="360" height="160" rx="14" fill="url(#tg)"/>
+    <ellipse cx="90" cy="100" rx="50" ry="20" fill="#000" opacity=".35"/>
+    <ellipse cx="270" cy="100" rx="50" ry="20" fill="#000" opacity=".35"/>
+    <!-- twin banners -->
+    <path d="M40 120 L70 30 L95 120 Z" fill="#a83028"/>
+    <path d="M55 70 H85" stroke="#ffc14a" stroke-width="2"/>
+    <path d="M265 120 L295 28 L320 120 Z" fill="#2a5088"/>
+    <path d="M280 68 H310" stroke="#6ec8ff" stroke-width="2"/>
+    <!-- central crest -->
+    <circle cx="180" cy="72" r="28" fill="#121820" stroke="#ffc14a" stroke-width="2" filter="url(#glowt)"/>
+    <path d="M180 48 L198 78 L180 70 L162 78 Z" fill="#ff6b5a"/>
+    <path d="M168 86 L180 95 L192 86" fill="#6ec8ff"/>
+    <text x="180" y="130" text-anchor="middle" fill="url(#tt)" font-size="32" font-family="system-ui" font-weight="800" letter-spacing="3" filter="url(#glowt)">HOLDFAST</text>
+    <text x="180" y="148" text-anchor="middle" fill="#9aa8c0" font-size="10" font-family="system-ui">Commanders of the Spirewake</text>
+  </svg>`;
+  }
+
+  function portraitSvg(faction, isYou, leaderId, frame) {
+    if (leaderId) return leaderPortraitSvg(leaderId, frame || "bronze");
+    const p = pal(faction);
+    const label = isYou ? "YOU" : "OPP";
+    return `<svg viewBox="0 0 80 48" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="hp${faction}${isYou?1:0}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${p.c}"/><stop offset="100%" stop-color="${p.b}"/></linearGradient></defs>
+      <rect width="80" height="48" rx="8" fill="url(#hp${faction}${isYou?1:0})"/>
+      <circle cx="24" cy="22" r="12" fill="${p.d}"/>
+      <rect x="14" y="32" width="20" height="12" rx="2" fill="${p.a}"/>
+      <text x="52" y="28" text-anchor="middle" fill="${p.d}" font-size="10" font-family="system-ui" font-weight="700">${label}</text>
+    </svg>`;
+  }
+
+  function frameVariantSvg(frame) {
+    const colors = { bronze: "#a07040", silver: "#c0c8d0", gold: "#ffc14a", legendary: "#c46bff" };
+    const c = colors[frame] || colors.bronze;
+    return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="${c}" stroke-width="4"/><rect x="8" y="8" width="48" height="48" rx="4" fill="#0a0e14" stroke="${c}" stroke-opacity=".4"/></svg>`;
+  }
+
+  function artCount() {
+    return {
+      cardScenes: Object.keys(SCENES).length,
+      leaderPortraits: Object.keys(LEADER_MOTIFS).length,
+      frames: 4,
+      board: 1,
+      pack: 1,
+      title: 1,
+    };
+  }
+
+  function toDataUri(svg) {
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg.replace(/\s+/g, " ").trim());
+  }
+
+  return {
+    cardArtSvg,
+    emblemSvg,
+    portraitSvg,
+    leaderPortraitSvg,
+    boardBgSvg,
+    titleArtSvg,
+    packWrapperSvg,
+    frameVariantSvg,
+    toDataUri,
+    artCount,
+    SCENES,
+    LEADER_MOTIFS,
+  };
+});
+
+</script>
+  <script>
+/**
+ * Holdfast — original Web Audio soundtrack + SFX (no external files).
+ * Unlocks on first user gesture (iOS). Mute remembered in localStorage.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.HoldfastAudio = factory();
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  const STORE_KEY = "holdfast_muted";
+
+  let ctx = null;
+  let master = null;
+  let musicGain = null;
+  let sfxGain = null;
+  let unlocked = false;
+  let muted = false;
+  let musicMode = "menu"; // menu | battle
+  let musicTimer = null;
+  let step = 0;
+
+  try {
+    muted = localStorage.getItem(STORE_KEY) === "1";
+  } catch (_) {}
+
+  function ensure() {
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = muted ? 0 : 0.7;
+    master.connect(ctx.destination);
+    musicGain = ctx.createGain();
+    musicGain.gain.value = 0.22;
+    musicGain.connect(master);
+    sfxGain = ctx.createGain();
+    sfxGain.gain.value = 0.45;
+    sfxGain.connect(master);
+    return ctx;
+  }
+
+  function unlock() {
+    const c = ensure();
+    if (!c) return;
+    if (c.state === "suspended") c.resume();
+    unlocked = true;
+    applyMute();
+    startMusic(musicMode);
+  }
+
+  function applyMute() {
+    if (!master || !ctx) return;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(muted ? 0 : 0.7, now, 0.05);
+  }
+
+  function setMuted(on) {
+    muted = !!on;
+    try {
+      localStorage.setItem(STORE_KEY, muted ? "1" : "0");
+    } catch (_) {}
+    applyMute();
+    if (!muted && unlocked) startMusic(musicMode);
+  }
+
+  function toggleMute() {
+    setMuted(!muted);
+    return muted;
+  }
+
+  function isMuted() {
+    return muted;
+  }
+
+  function tone(freq, dur, type, gain, when, dest) {
+    if (!ctx || !unlocked) return;
+    const t0 = when != null ? when : ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain || 0.15, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g);
+    g.connect(dest || sfxGain);
+    o.start(t0);
+    o.stop(t0 + dur + 0.02);
+  }
+
+  function noiseBurst(dur, gain, when) {
+    if (!ctx || !unlocked) return;
+    const t0 = when != null ? when : ctx.currentTime;
+    const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    const f = ctx.createBiquadFilter();
+    f.type = "bandpass";
+    f.frequency.value = 1200;
+    g.gain.setValueAtTime(gain || 0.2, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f);
+    f.connect(g);
+    g.connect(sfxGain);
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  }
+
+  // —— SFX ——
+  function playCard() {
+    tone(520, 0.08, "triangle", 0.12);
+    tone(780, 0.12, "square", 0.08, ctx && ctx.currentTime + 0.05);
+  }
+  function attack() {
+    tone(180, 0.1, "sawtooth", 0.18);
+    noiseBurst(0.12, 0.25);
+  }
+  function damage() {
+    tone(140, 0.15, "square", 0.16);
+    tone(90, 0.2, "sawtooth", 0.1, ctx && ctx.currentTime + 0.05);
+  }
+  function heal() {
+    tone(440, 0.1, "sine", 0.1);
+    tone(660, 0.15, "sine", 0.08, ctx && ctx.currentTime + 0.08);
+  }
+  function draw() {
+    tone(600, 0.06, "triangle", 0.08);
+    tone(720, 0.08, "triangle", 0.06, ctx && ctx.currentTime + 0.05);
+  }
+  function death() {
+    tone(220, 0.08, "sawtooth", 0.12);
+    tone(110, 0.25, "sawtooth", 0.14, ctx && ctx.currentTime + 0.05);
+    noiseBurst(0.2, 0.2);
+  }
+  function win() {
+    [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, "triangle", 0.12, ctx && ctx.currentTime + i * 0.12));
+  }
+  function lose() {
+    [392, 330, 262, 196].forEach((f, i) => tone(f, 0.3, "sawtooth", 0.1, ctx && ctx.currentTime + i * 0.14));
+  }
+  function turn() {
+    tone(880, 0.08, "sine", 0.1);
+    tone(1100, 0.1, "sine", 0.08, ctx && ctx.currentTime + 0.07);
+  }
+  function uiClick() {
+    tone(700, 0.04, "square", 0.06);
+  }
+
+  // —— Procedural music loops ——
+  // Menu: calm minor arpeggio. Battle: driving low pulse + sparse fifths.
+  const MENU_NOTES = [220, 261.63, 329.63, 392, 329.63, 261.63];
+  const BATTLE_BASS = [110, 110, 130.81, 110, 98, 110, 146.83, 130.81];
+  const BATTLE_LEAD = [0, 329.63, 0, 392, 0, 349.23, 0, 293.66];
+
+  function scheduleMusicTick() {
+    if (!ctx || !unlocked || muted) return;
+    const t = ctx.currentTime;
+    const beat = 0.28;
+    if (musicMode === "menu") {
+      const f = MENU_NOTES[step % MENU_NOTES.length];
+      tone(f, 0.35, "sine", 0.07, t, musicGain);
+      if (step % 3 === 0) tone(f / 2, 0.4, "triangle", 0.04, t, musicGain);
+    } else {
+      const b = BATTLE_BASS[step % BATTLE_BASS.length];
+      tone(b, 0.22, "sawtooth", 0.06, t, musicGain);
+      const lead = BATTLE_LEAD[step % BATTLE_LEAD.length];
+      if (lead) tone(lead, 0.18, "square", 0.035, t + 0.02, musicGain);
+      if (step % 4 === 0) noiseBurst(0.04, 0.04, t);
+    }
+    step++;
+    musicTimer = setTimeout(scheduleMusicTick, beat * 1000);
+  }
+
+  function stopMusic() {
+    if (musicTimer) {
+      clearTimeout(musicTimer);
+      musicTimer = null;
+    }
+  }
+
+  function startMusic(mode) {
+    musicMode = mode || musicMode;
+    stopMusic();
+    if (!unlocked || muted) return;
+    ensure();
+    scheduleMusicTick();
+  }
+
+  function setMusicMode(mode) {
+    if (mode === musicMode && musicTimer) return;
+    musicMode = mode;
+    if (unlocked && !muted) startMusic(mode);
+  }
+
+  return {
+    unlock,
+    setMuted,
+    toggleMute,
+    isMuted,
+    isUnlocked: () => unlocked,
+    setMusicMode,
+    startMusic,
+    stopMusic,
+    sfx: { playCard, attack, damage, heal, draw, death, win, lose, turn, uiClick },
+  };
+});
+
+</script>
+  <script>
+/**
+ * Holdfast — canvas/DOM VFX (particles, float text, shake). Non-blocking.
+ * Honors prefers-reduced-motion.
+ */
+(function (root, factory) {
+  if (typeof module === "object" && module.exports) module.exports = factory();
+  else root.HoldfastFX = factory();
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  "use strict";
+
+  function reduced() {
+    try {
+      return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function layer() {
+    let el = document.getElementById("fx-layer");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "fx-layer";
+      el.setAttribute("aria-hidden", "true");
+      (document.getElementById("app") || document.body).appendChild(el);
+    }
+    return el;
+  }
+
+  function floatText(x, y, text, cls) {
+    const el = document.createElement("div");
+    el.className = "fx-float " + (cls || "");
+    el.textContent = text;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    layer().appendChild(el);
+    setTimeout(() => el.remove(), reduced() ? 200 : 900);
+  }
+
+  function burst(x, y, color, n) {
+    if (reduced()) return;
+    n = n || 10;
+    const root = layer();
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement("div");
+      p.className = "fx-particle";
+      const ang = (Math.PI * 2 * i) / n + Math.random() * 0.4;
+      const dist = 28 + Math.random() * 36;
+      p.style.left = x + "px";
+      p.style.top = y + "px";
+      p.style.background = color || "#ffc14a";
+      p.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+      p.style.setProperty("--dy", Math.sin(ang) * dist + "px");
+      root.appendChild(p);
+      setTimeout(() => p.remove(), 700);
+    }
+  }
+
+  function hitSparks(x, y) {
+    if (reduced()) return;
+    burst(x, y, "#fff4c0", 8);
+    burst(x, y, "#ff6b5a", 6);
+    const flash = document.createElement("div");
+    flash.className = "fx-hitflash";
+    flash.style.left = x - 20 + "px";
+    flash.style.top = y - 20 + "px";
+    layer().appendChild(flash);
+    setTimeout(() => flash.remove(), 280);
+  }
+
+  function shake(el, ms) {
+    if (!el || reduced()) return;
+    el.classList.add("shake-hard");
+    setTimeout(() => el.classList.remove("shake-hard"), ms || 420);
+  }
+
+  function screenShake() {
+    const app = document.getElementById("app");
+    shake(app, 380);
+  }
+
+  function slam(el) {
+    if (!el) return;
+    el.classList.remove("play-in");
+    void el.offsetWidth;
+    el.classList.add(reduced() ? "play-in" : "slam-in");
+    setTimeout(() => el.classList.remove("slam-in"), 500);
+    if (!reduced()) {
+      const r = el.getBoundingClientRect();
+      burst(r.left + r.width / 2, r.top + r.height / 2, "#ffc14a", 12);
+    }
+  }
+
+  function death(el, done) {
+    if (!el) {
+      if (done) done();
+      return;
+    }
+    if (reduced()) {
+      el.classList.add("fade-out");
+      setTimeout(() => {
+        el.remove();
+        if (done) done();
+      }, 120);
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    burst(r.left + r.width / 2, r.top + r.height / 2, "#ff8a5a", 18);
+    burst(r.left + r.width / 2, r.top + r.height / 2, "#fff", 8);
+    el.classList.add("shatter");
+    setTimeout(() => {
+      el.remove();
+      if (done) done();
+    }, 480);
+  }
+
+  function spellTrail(x0, y0, x1, y1, color) {
+    if (reduced()) return;
+    const el = document.createElement("div");
+    el.className = "fx-trail";
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const ang = (Math.atan2(dy, dx) * 180) / Math.PI;
+    el.style.left = x0 + "px";
+    el.style.top = y0 + "px";
+    el.style.width = len + "px";
+    el.style.transform = `rotate(${ang}deg)`;
+    el.style.background = `linear-gradient(90deg, transparent, ${color || "#6ec8ff"}, transparent)`;
+    layer().appendChild(el);
+    setTimeout(() => el.remove(), 400);
+  }
+
+  function turnBanner(text, opp) {
+    const el = document.createElement("div");
+    el.className = "fx-turn-banner" + (opp ? " opp" : "");
+    el.textContent = text;
+    layer().appendChild(el);
+    setTimeout(() => el.remove(), reduced() ? 400 : 1100);
+  }
+
+  function legendaryGlow(el) {
+    if (!el) return;
+    el.classList.add("legendary-glow");
+    setTimeout(() => el.classList.remove("legendary-glow"), 1600);
+  }
+
+  function packRevealBurst(x, y, rarity) {
+    const colors = { common: "#9aa8c0", rare: "#6ec8ff", epic: "#c46bff", legendary: "#ffc14a" };
+    burst(x, y, colors[rarity] || colors.common, rarity === "legendary" ? 28 : 14);
+    if (rarity === "legendary" || rarity === "epic") {
+      const ring = document.createElement("div");
+      ring.className = "fx-pack-ring " + rarity;
+      ring.style.left = x - 40 + "px";
+      ring.style.top = y - 40 + "px";
+      layer().appendChild(ring);
+      setTimeout(() => ring.remove(), 900);
+    }
+  }
+
+  function victoryBanner(win) {
+    const el = document.createElement("div");
+    el.className = "fx-result " + (win ? "win" : "lose");
+    el.innerHTML = win
+      ? '<div class="fx-result-inner"><span class="fx-result-title">VICTORY</span><span class="fx-result-sub">Hold the line.</span></div>'
+      : '<div class="fx-result-inner"><span class="fx-result-title">DEFEAT</span><span class="fx-result-sub">The line breaks.</span></div>';
+    layer().appendChild(el);
+    if (!reduced()) {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      burst(cx, cy, win ? "#ffc14a" : "#ff6b5a", 36);
+      burst(cx, cy - 40, win ? "#fff" : "#888", 16);
+    }
+    setTimeout(() => el.remove(), reduced() ? 600 : 2800);
+  }
+
+  return {
+    reduced,
+    floatText,
+    burst,
+    hitSparks,
+    shake,
+    screenShake,
+    slam,
+    death,
+    spellTrail,
+    turnBanner,
+    legendaryGlow,
+    packRevealBurst,
+    victoryBanner,
+    layer,
+  };
+});
+
+</script>
+  <script>
+/**
+ * Holdfast — lobby: leaders, packs, collection/deck, modes, save export.
+ */
+(function () {
+  "use strict";
+  const Meta = window.HoldfastMeta;
+  const Art = window.HoldfastArt;
+  const AudioFX = window.HoldfastAudio;
+  if (!Meta) return;
+
+  let save = Meta.loadSave();
+  window.HoldfastSave = save;
+
+  const qs = (s) => document.querySelector(s);
+
+  function refreshLeaders() {
+    const el = qs("#lobby-leaders");
+    if (!el) return;
+    el.innerHTML = '<div class="leader-grid"></div>';
+    const grid = el.firstChild;
+    Meta.LEADERS.forEach((L) => {
+      const prog = Meta.ensureLeaderProg(save, L.id);
+      const xp = Meta.xpProgress(prog.xp);
+      const frame = Meta.frameForLevel(xp.level);
+      const power = Meta.getLeaderPower(L.id, save);
+      const card = document.createElement("div");
+      card.className = "leader-card frame-" + frame + (save.selectedLeader === L.id ? " selected" : "");
+      card.innerHTML =
+        (Art
+          ? '<div class="portrait-frame">' + Art.leaderPortraitSvg(L.id, frame) + "</div>"
+          : "") +
+        "<h4>" + L.name + "</h4>" +
+        "<p>" + L.blurb + "</p>" +
+        "<p>Lv " + xp.level + " · " + (power && power.name) + "</p>" +
+        '<div class="xp-bar"><span style="width:' + Math.round(xp.pct * 100) + '%"></span></div>' +
+        (prog.pendingChoice
+          ? '<button type="button" data-choose="' + L.id + '">Choose ability</button>'
+          : "");
+      card.addEventListener("click", (ev) => {
+        if (ev.target && ev.target.getAttribute("data-choose")) {
+          openAbilityChoice(L.id);
+          return;
+        }
+        save.selectedLeader = L.id;
+        Meta.persist(save);
+        refreshLeaders();
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  function openAbilityChoice(leaderId) {
+    const L = Meta.BY_LEADER[leaderId];
+    const baseId = L.power.id.replace(/_b$/, "");
+    const variants = Meta.POWER_VARIANTS[baseId] || [L.power];
+    const modal = qs("#ability-modal");
+    const choices = qs("#ability-choices");
+    const title = qs("#ability-title");
+    const blurb = qs("#ability-blurb");
+    if (!modal || !choices) {
+      // fallback
+      Meta.chooseLeaderPower(save, leaderId, 0);
+      refreshLeaders();
+      return;
+    }
+    title.textContent = "Sidegrade — " + L.name;
+    blurb.textContent = "Equal power. Pick the tool that fits your style.";
+    choices.innerHTML = "";
+    variants.forEach((v, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.innerHTML = "<strong>" + v.name + "</strong><br><span class=\"tag\">" + v.text + " · cost " + v.cost + "</span>";
+      b.onclick = () => {
+        Meta.chooseLeaderPower(save, leaderId, i);
+        modal.hidden = true;
+        modal.classList.remove("open");
+        refreshLeaders();
+      };
+      choices.appendChild(b);
+    });
+    qs("#ability-cancel").onclick = () => {
+      modal.hidden = true;
+      modal.classList.remove("open");
+    };
+    modal.hidden = false;
+    modal.classList.add("open");
+  }
+
+  function refreshPacks() {
+    const el = qs("#lobby-packs");
+    if (!el) return;
+    el.innerHTML =
+      "<p>Packs ready: <strong>" + (save.packs || 0) + "</strong> · Wins " + (save.wins || 0) + " · Losses " + (save.losses || 0) + "</p>" +
+      '<button type="button" id="btn-open-pack" class="primary">Open pack</button>' +
+      '<p class="tag">Win = 1 pack. Every 2 losses = 1 pack. Starter packs included.</p>';
+    const btn = qs("#btn-open-pack");
+    if (btn) btn.onclick = () => doOpenPack();
+  }
+
+  function doOpenPack() {
+    const res = Meta.openPack(save);
+    if (!res.ok) {
+      alert(res.error || "No packs");
+      return;
+    }
+    if (AudioFX) AudioFX.sfx.uiClick();
+    const overlay = qs("#pack-open");
+    overlay.classList.add("open");
+    overlay.innerHTML =
+      (Art && Art.packWrapperSvg ? '<div class="pack-wrap" style="width:90px;margin:0 auto 0.5rem">' + Art.packWrapperSvg() + "</div>" : "") +
+      "<h2>Pack opening</h2>";
+    if (window.HoldfastFX) {
+      window.HoldfastFX.burst(window.innerWidth / 2, 120, "#ffc14a", 22);
+    }
+    let i = 0;
+    function next() {
+      if (i >= res.cards.length) {
+        const done = document.createElement("button");
+        done.className = "primary";
+        done.textContent = "Done";
+        done.onclick = () => {
+          overlay.classList.remove("open");
+          refreshPacks();
+          refreshCollection();
+        };
+        overlay.appendChild(done);
+        return;
+      }
+      const c = res.cards[i++];
+      const div = document.createElement("div");
+      div.className = "pack-card-reveal " + c.rarity;
+      const def = window.HoldfastCards && window.HoldfastCards.BY_ID[c.id];
+      div.innerHTML =
+        (Art && def ? Art.cardArtSvg(Object.assign({ defId: def.id }, def)) : "") +
+        "<strong>" + c.name + "</strong><br/><span>" + c.rarity + "</span>";
+      overlay.appendChild(div);
+      if (c.rarity === "legendary" && window.HoldfastFX) window.HoldfastFX.legendaryGlow(div);
+      if (window.HoldfastFX) {
+        const rr = div.getBoundingClientRect();
+        window.HoldfastFX.packRevealBurst(rr.left + rr.width / 2 || window.innerWidth / 2, rr.top + rr.height / 2 || 200, c.rarity);
+      }
+      if (AudioFX) AudioFX.sfx.playCard();
+      setTimeout(next, 450);
+    }
+    next();
+    refreshPacks();
+  }
+
+  function refreshCollection() {
+    const el = qs("#lobby-collection");
+    if (!el) return;
+    const leaderId = save.selectedLeader;
+    const deck = Meta.getDeck(save, leaderId);
+    const owned = Object.keys(save.owned || {}).sort();
+    el.innerHTML =
+      "<p>Deck for <strong>" + (Meta.BY_LEADER[leaderId] || {}).name + "</strong> (" + deck.length + "/" + Meta.DECK_SIZE + ")</p>" +
+      '<p class="tag">Tap owned cards to add (max copies). Tap deck list to remove.</p>' +
+      '<div id="deck-list" class="tag"></div><hr/>' +
+      '<div id="owned-list"></div>';
+    const deckList = qs("#deck-list");
+    const counts = {};
+    deck.forEach((id) => (counts[id] = (counts[id] || 0) + 1));
+    deckList.textContent = Object.keys(counts)
+      .map((id) => id + "×" + counts[id])
+      .join(", ");
+    deckList.onclick = () => {
+      if (!deck.length) return;
+      deck.pop();
+      Meta.setDeck(save, leaderId, deck);
+      refreshCollection();
+    };
+    const ownedList = qs("#owned-list");
+    owned.forEach((id) => {
+      const n = save.owned[id];
+      const d = window.HoldfastCards.BY_ID[id];
+      if (!d) return;
+      const b = document.createElement("button");
+      b.textContent = d.name + " (" + Meta.rarityOf(id) + ") ×" + n;
+      b.onclick = () => {
+        const next = deck.concat([id]);
+        const v = Meta.validateDeck(next, save);
+        if (!v.ok) {
+          // allow building toward size — only block copy limits / ownership
+          if (next.length <= Meta.DECK_SIZE && !(v.errors || []).some((e) => /exceeds|Not enough|Unknown/.test(e))) {
+            save.decks[leaderId] = next;
+            Meta.persist(save);
+          } else {
+            alert(v.errors.join("\n"));
+            return;
+          }
+        } else {
+          Meta.setDeck(save, leaderId, next);
+        }
+        // if under size, still save partial
+        if (next.length <= Meta.DECK_SIZE) {
+          save.decks[leaderId] = next;
+          Meta.persist(save);
+        }
+        refreshCollection();
+      };
+      ownedList.appendChild(b);
+    });
+  }
+
+  function togglePanel(id) {
+    ["lobby-leaders", "lobby-mode", "lobby-packs", "lobby-collection"].forEach((pid) => {
+      const el = qs("#" + pid);
+      if (!el) return;
+      if (pid === id) el.classList.toggle("open");
+      else el.classList.remove("open");
+    });
+    if (id === "lobby-leaders") refreshLeaders();
+    if (id === "lobby-packs") refreshPacks();
+    if (id === "lobby-collection") refreshCollection();
+  }
+
+  function bind() {
+    const map = {
+      "btn-lobby-leaders": "lobby-leaders",
+      "btn-lobby-mode": "lobby-mode",
+      "btn-lobby-packs": "lobby-packs",
+      "btn-lobby-collection": "lobby-collection",
+    };
+    Object.keys(map).forEach((bid) => {
+      const b = qs("#" + bid);
+      if (b) b.addEventListener("click", () => togglePanel(map[bid]));
+    });
+    const exp = qs("#btn-lobby-export");
+    if (exp) {
+      exp.addEventListener("click", () => {
+        const code = Meta.exportCode(save);
+        const next = window.prompt("Save code (copy now). Paste a code to import:", code);
+        if (next && next !== code) {
+          try {
+            save = Meta.importCode(next);
+            window.HoldfastSave = save;
+            alert("Imported.");
+            refreshLeaders();
+            refreshPacks();
+          } catch (e) {
+            alert("Import failed: " + e.message);
+          }
+        }
+      });
+    }
+    const mode = qs("#sel-mode");
+    const diff = qs("#sel-diff");
+    if (mode) {
+      mode.value = save.mode || "ai";
+      mode.onchange = () => {
+        save.mode = mode.value;
+        Meta.persist(save);
+      };
+    }
+    if (diff) {
+      diff.value = save.difficulty || "normal";
+      diff.onchange = () => {
+        save.difficulty = diff.value;
+        Meta.persist(save);
+      };
+    }
+  }
+
+  function raidBossFor(L) {
+    return {
+      id: "raid_boss",
+      name: "Siege Titan",
+      faction: L.faction === "red" ? "black" : "red",
+      power: { id: "shadow_stab", name: "Titan Slam", text: "Deal 1 to enemy commander.", cost: 2, cooldown: 0 },
+      passive: "Boss regenerates 1 HP at the start of its turn.",
+      starter: Meta.BY_LEADER[L.faction === "red" ? "night_phantom" : "iron_marshal"].starter.slice(),
+    };
+  }
+
+  function pickAllyLeader(playerLeaderId) {
+    const me = Meta.BY_LEADER[playerLeaderId];
+    const pool = Meta.LEADERS.filter((x) => x.id !== playerLeaderId && x.faction === me.faction);
+    return pool[0] || Meta.LEADERS.find((x) => x.id !== playerLeaderId) || me;
+  }
+
+  function gameOptionsFromSave() {
+    const leaderId = save.selectedLeader || "iron_marshal";
+    const L = Meta.BY_LEADER[leaderId];
+    const mode = (qs("#sel-mode") && qs("#sel-mode").value) || save.mode || "ai";
+    const difficulty = (qs("#sel-diff") && qs("#sel-diff").value) || save.difficulty || "normal";
+    save.mode = mode;
+    save.difficulty = difficulty;
+    Meta.persist(save);
+
+    let opp = Meta.pickAiLeader(leaderId);
+    let oppHp = null;
+    let raid = false;
+    let coop = false;
+    let ally = null;
+    const hotseat = mode === "hotseat" || mode === "coop_hotseat";
+
+    if (mode === "raid" || mode === "coop" || mode === "coop_hotseat") {
+      raid = true;
+      opp = raidBossFor(L);
+      oppHp = 30;
+    }
+    if (mode === "coop" || mode === "coop_hotseat") {
+      coop = true;
+      const A = pickAllyLeader(leaderId);
+      ally = {
+        leaderId: A.id,
+        leaderName: A.name,
+        faction: A.faction,
+        power: Meta.getLeaderPower(A.id, save),
+        passive: A.passive,
+        deck: Meta.getDeck(save, A.id),
+      };
+    }
+
+    const power = Meta.getLeaderPower(leaderId, save);
+    return {
+      mode,
+      difficulty,
+      hotseat,
+      raid,
+      coop,
+      player: {
+        leaderId: L.id,
+        leaderName: L.name,
+        faction: L.faction,
+        power,
+        passive: L.passive,
+        deck: Meta.getDeck(save, L.id),
+      },
+      ally,
+      opponent: {
+        leaderId: opp.id,
+        leaderName: opp.name,
+        faction: opp.faction,
+        power: opp.power || Meta.getLeaderPower(opp.id, save),
+        passive: opp.passive || (Meta.BY_LEADER[opp.id] && Meta.BY_LEADER[opp.id].passive),
+        deck: opp.starter || Meta.getDeck(save, opp.id),
+        hp: oppHp,
+      },
+    };
+  }
+
+  window.HoldfastLobby = {
+    getSave: () => save,
+    setSave: (s) => {
+      save = s;
+      window.HoldfastSave = s;
+    },
+    refreshLeaders,
+    refreshPacks,
+    refreshCollection,
+    gameOptionsFromSave,
+    awardAndXp(won, leaderId) {
+      Meta.awardMatch(save, won);
+      return Meta.grantLeaderXp(save, leaderId || save.selectedLeader, won);
+    },
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      bind();
+      refreshLeaders();
+    });
+  } else {
+    bind();
+    refreshLeaders();
+  }
+})();
+
+</script>
+  <script>
+/**
+ * Holdfast — DOM UI (phone stage, drag-to-play, art, animations)
+ */
+(function () {
+  "use strict";
+  const Engine = window.HoldfastEngine;
+  const AI = window.HoldfastAI;
+  const Cards = window.HoldfastCards;
+  const Art = window.HoldfastArt;
+  const AudioFX = window.HoldfastAudio;
+  const FX = window.HoldfastFX;
+
+  let state = null;
+  let selectedFaction = "red";
+  let busy = false;
+  let prevHandIds = [];
+  let prevActive = null;
+  let knownBoardIds = new Set();
+  let attackMode = null; // { attackerId, options }
+  let prevHp = { 0: 20, 1: 20 };
+  let prevBoardHp = {}; // instanceId -> health
+  let gameMode = "ai";
+  let aiDifficulty = "normal";
+  let hotseat = false;
+  let playerLeaderId = null;
+  let viewSeat = 0; // whose hand/board is "yours" in hotseat
+  let coopMode = false;
+
+  // Drag state
+  let drag = null; // { card, options, ghost, startX, startY, moved, sourceEl }
+
+  const qs = (sel) => document.querySelector(sel);
+  const qsa = (sel) => Array.from(document.querySelectorAll(sel));
+
+  let startGen = 0;
+
+  function bindTap(el, handler) {
+    if (!el) return;
+    let touchHandledAt = 0;
+    el.addEventListener("pointerup", (ev) => {
+      if (ev.pointerType !== "touch" && ev.pointerType !== "pen") return;
+      if (ev.button != null && ev.button !== 0) return;
+      touchHandledAt = Date.now();
+      try { ev.preventDefault(); } catch (_) {}
+      handler(ev);
+    }, { passive: false });
+    el.addEventListener("click", (ev) => {
+      if (Date.now() - touchHandledAt < 1000) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        return;
+      }
+      handler(ev);
+    });
+  }
+
+  function clearHighlights() {
+    qsa(".card.target-hl, .hero-bar.target-hl").forEach((n) => n.classList.remove("target-hl"));
+    const prev = qs("#preview-strip");
+    if (prev) {
+      prev.textContent = "";
+      prev.classList.remove("active");
+    }
+    attackMode = null;
+  }
+
+  function setPreview(text) {
+    const prev = qs("#preview-strip");
+    if (!prev) return;
+    if (text) {
+      prev.textContent = text;
+      prev.classList.add("active");
+    } else {
+      prev.textContent = "";
+      prev.classList.remove("active");
+    }
+  }
+
+  function goSetup() {
+    startGen++;
+    busy = false;
+    state = null;
+    cancelDrag();
+    clearHighlights();
+    closeAllModals();
+    qsa(".fly-card, .drag-ghost, .turn-banner, .impact-flash, .dmg-floater, .fx-float, .fx-particle, .fx-trail, .fx-result, .shatter").forEach((n) => n.remove());
+    const fx = qs("#fx-layer");
+    if (fx) fx.innerHTML = "";
+    const game = qs("#screen-game");
+    const setup = qs("#screen-setup");
+    if (game) game.classList.remove("active");
+    if (setup) setup.classList.add("active");
+    const hint = qs("#hint");
+    if (hint) hint.textContent = "";
+    const seed = qs("#seed-label");
+    if (seed) seed.textContent = "";
+    prevHp = { 0: 20, 1: 20 };
+    prevBoardHp = {};
+    if (AudioFX) AudioFX.setMusicMode("menu");
+  }
+
+  function syncPowerBtn() {
+    const b = qs("#btn-power-game");
+    if (!b || !state) { if (b) b.style.display = "none"; return; }
+    const p = state.players[state.active];
+    const can = p && p.power && p.powerCd <= 0 && p.supply >= (p.power.cost || 0) && state.winner == null && state.phase === "main";
+    b.style.display = p && p.power ? "inline-block" : "none";
+    b.disabled = !can || busy || (hotseat ? state.active !== viewSeat : state.active !== 0);
+    b.textContent = p && p.power ? (p.power.name + " (" + p.power.cost + ")" + (p.powerCd > 0 ? " CD" + p.powerCd : "")) : "Power";
+  }
+
+  function maybeHandoff(nextActive) {
+    if (!hotseat || state.winner != null) return Promise.resolve();
+    return new Promise((resolve) => {
+      const h = qs("#handoff");
+      const ht = qs("#handoff-text");
+      if (!h) return resolve();
+      const name = state.players[nextActive].leaderName || ("Player " + (nextActive + 1));
+      ht.textContent = name + " — pass the device. Other players look away, then tap Ready.";
+      const app = qs("#app");
+      if (app) app.classList.add("hand-hidden");
+      const hand = qs("#hand");
+      if (hand) hand.style.filter = "blur(12px) brightness(0.35)";
+      h.classList.add("open");
+      const btn = qs("#btn-handoff");
+      const once = () => {
+        btn.removeEventListener("click", once);
+        h.classList.remove("open");
+        if (hand) hand.style.filter = "";
+        if (app) app.classList.remove("hand-hidden");
+        viewSeat = nextActive;
+        resolve();
+      };
+      btn.addEventListener("click", once);
+    });
+  }
+
+  function unlockAudioOnce() {
+    if (AudioFX && !AudioFX.isUnlocked()) AudioFX.unlock();
+  }
+
+  function syncMuteBtn() {
+    const b = qs("#btn-mute");
+    if (!b || !AudioFX) return;
+    b.textContent = AudioFX.isMuted() ? "Unmute" : "Mute";
+    b.setAttribute("aria-pressed", AudioFX.isMuted() ? "true" : "false");
+  }
+
+  function paintStaticArt() {
+    if (!Art) return;
+    const title = qs("#title-art");
+    if (title) title.innerHTML = Art.titleArtSvg();
+    const board = qs("#board-bg");
+    if (board) board.style.backgroundImage = "url(\"" + Art.toDataUri(Art.boardBgSvg()) + "\")";
+    const er = qs(".faction-card.red .faction-emblem");
+    if (er) er.innerHTML = Art.emblemSvg("red");
+    const eb = qs(".faction-card.black .faction-emblem");
+    if (eb) eb.innerHTML = Art.emblemSvg("black");
+  }
+
+  function init() {
+    const bg = qs("#board-bg");
+    if (bg && Art && Art.boardBgSvg) bg.innerHTML = Art.boardBgSvg();
+    const title = qs("#title-art");
+    if (title && Art && Art.titleArtSvg) title.innerHTML = Art.titleArtSvg();
+
+    paintStaticArt();
+    syncMuteBtn();
+    document.addEventListener("pointerdown", unlockAudioOnce, { once: true, capture: true });
+    document.addEventListener("touchstart", unlockAudioOnce, { once: true, capture: true });
+
+    qsa(".faction-card").forEach((el) => {
+      bindTap(el, () => {
+        unlockAudioOnce();
+        if (AudioFX) AudioFX.sfx.uiClick();
+        qsa(".faction-card").forEach((x) => x.classList.remove("selected"));
+        el.classList.add("selected");
+        selectedFaction = el.dataset.faction;
+      });
+    });
+    const red = qs(".faction-card.red");
+    if (red) red.classList.add("selected");
+    bindTap(qs("#btn-start"), () => { unlockAudioOnce(); if (AudioFX) AudioFX.sfx.uiClick(); startGame(); });
+    bindTap(qs("#btn-end"), () => {
+      unlockAudioOnce();
+      if (AudioFX) AudioFX.sfx.uiClick();
+      clearHighlights();
+      humanAct({ kind: "end_turn" });
+    });
+    bindTap(qs("#btn-help"), () => { unlockAudioOnce(); openHelp(true); });
+    bindTap(qs("#btn-help-close"), () => openHelp(false));
+    bindTap(qs("#btn-new"), () => { unlockAudioOnce(); if (AudioFX) AudioFX.sfx.uiClick(); goSetup(); });
+    bindTap(qs("#modal-cancel"), closeModal);
+    bindTap(qs("#btn-mute"), () => {
+      unlockAudioOnce();
+      if (AudioFX) AudioFX.toggleMute();
+      syncMuteBtn();
+    });
+    bindTap(qs("#btn-power-game"), () => {
+      unlockAudioOnce();
+      if (!state || busy) return;
+      const plays = Engine.listLegalPlays(state).filter((a) => a.kind === "hero_power");
+      if (!plays.length) return;
+      if (plays.length === 1 && !plays[0].target) humanAct(plays[0]);
+      else {
+        // use first legal target for simplicity (cut corner)
+        humanAct(plays[0]);
+      }
+      if (AudioFX) AudioFX.sfx.playCard();
+      if (FX) FX.burst(window.innerWidth / 2, 120, "#ffc14a", 18);
+    });
+
+    const helpModal = qs("#modal-help");
+    if (helpModal) {
+      helpModal.addEventListener("pointerup", (ev) => {
+        if (ev.target === helpModal) openHelp(false);
+      });
+    }
+    const targetModal = qs("#modal-target");
+    if (targetModal) {
+      targetModal.addEventListener("pointerup", (ev) => {
+        if (ev.target === targetModal) closeModal();
+      });
+    }
+
+    // Cancel attack mode by tapping empty stage
+    const stage = qs("#stage");
+    if (stage) {
+      stage.addEventListener("click", (ev) => {
+        if (!attackMode) return;
+        if (ev.target.closest && ev.target.closest(".card, .hero-bar, button, .modal")) return;
+        clearHighlights();
+        render();
+      });
+    }
+
+    document.addEventListener("pointermove", onPointerMove, { passive: false });
+    document.addEventListener("pointerup", onPointerUp, { passive: false });
+    document.addEventListener("pointercancel", onPointerUp, { passive: false });
+  }
+
+  function openHelp(on) {
+    const m = qs("#modal-help");
+    if (!m) return;
+    if (on) m.classList.add("open");
+    else m.classList.remove("open");
+  }
+
+  function closeAllModals() {
+    openHelp(false);
+    closeModal();
+  }
+
+  async function startGame() {
+    if (!Engine || !Cards) {
+      alert("Holdfast failed to load its game scripts. Download the HTML file and open it in Safari (Files → Share → Open in Safari). OneDrive / SharePoint links do not run this game.");
+      return;
+    }
+    unlockAudioOnce();
+    closeAllModals();
+    clearHighlights();
+    qsa(".fly-card, .drag-ghost, .turn-banner, .impact-flash, .fx-result").forEach((n) => n.remove());
+    const myGen = ++startGen;
+    cancelDrag();
+    busy = true;
+    if (AudioFX) AudioFX.setMusicMode("battle");
+    prevHp = { 0: Cards.START_HP, 1: Cards.START_HP };
+    prevBoardHp = {};
+    const seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+    const lobby = window.HoldfastLobby && window.HoldfastLobby.gameOptionsFromSave();
+    let gopts = { seed, playerFaction: selectedFaction, opponentFaction: selectedFaction === "red" ? "black" : "red" };
+    if (lobby) {
+      gameMode = lobby.mode;
+      aiDifficulty = lobby.difficulty;
+      hotseat = !!lobby.hotseat;
+      coopMode = !!lobby.coop;
+      playerLeaderId = lobby.player.leaderId;
+      selectedFaction = lobby.player.faction;
+      viewSeat = 0;
+      gopts = {
+        seed,
+        playerFaction: lobby.player.faction,
+        opponentFaction: lobby.opponent.faction,
+        playerLeaderId: lobby.player.leaderId,
+        playerLeaderName: lobby.player.leaderName,
+        playerPower: lobby.player.power,
+        playerPassive: lobby.player.passive,
+        playerDeck: lobby.player.deck,
+        opponentLeaderId: lobby.opponent.leaderId,
+        opponentLeaderName: lobby.opponent.leaderName,
+        opponentPower: lobby.opponent.power,
+        opponentPassive: lobby.opponent.passive,
+        opponentDeck: lobby.opponent.deck,
+        opponentHp: lobby.opponent.hp,
+        raidBoss: !!lobby.raid && !lobby.coop,
+        coop: !!lobby.coop,
+      };
+      if (lobby.coop && lobby.ally) {
+        gopts.allyFaction = lobby.ally.faction;
+        gopts.allyLeaderId = lobby.ally.leaderId;
+        gopts.allyLeaderName = lobby.ally.leaderName;
+        gopts.allyPower = lobby.ally.power;
+        gopts.allyPassive = lobby.ally.passive;
+        gopts.allyDeck = lobby.ally.deck;
+      }
+    }
+    state = Engine.createGame(gopts);
+    coopMode = !!(state && state.coop);
+    syncPowerBtn();
+    prevHandIds = [];
+    prevActive = null;
+    knownBoardIds = new Set();
+    qs("#screen-setup").classList.remove("active");
+    qs("#screen-game").classList.add("active");
+    try {
+      render({ skipDrawAnim: true });
+      showTurnBanner("Your turn");
+      const opening = state.players[0].hand.slice();
+      const handEl = qs("#hand");
+      if (handEl) handEl.innerHTML = "";
+      updateDeckCount();
+      for (let i = 0; i < opening.length; i++) {
+        if (myGen !== startGen) return;
+        await animateDrawToHand(opening[i], i === opening.length - 1);
+      }
+      if (myGen !== startGen) return;
+      prevHandIds = opening.map((c) => c.instanceId);
+      busy = false;
+      render();
+    } catch (err) {
+      console.error(err);
+      busy = false;
+      alert("Could not start the duel. Try downloading the file and opening it in Safari.");
+      goSetup();
+    }
+  }
+
+  function seatLabel(i) {
+    if (!state) return "";
+    const p = state.players[i];
+    return (p && p.leaderName) || ("P" + (i + 1));
+  }
+
+  function render(opts) {
+    opts = opts || {};
+    if (!state) return;
+    const snap = Engine.serialize(state);
+    const coop = !!snap.coop || snap.players.length === 3;
+    const bossIdx = coop ? 2 : 1;
+    // Perspective: in hotseat, viewSeat is the human whose turn/hand we show
+    const myIdx = hotseat ? viewSeat : 0;
+    const me = snap.players[myIdx] || snap.players[0];
+    const opp = snap.players[bossIdx] || snap.players[1];
+    const ally = coop ? snap.players[myIdx === 0 ? 1 : 0] : null;
+
+    renderHero("#hero-you", me, snap.active === myIdx, true, me.leaderId);
+    renderHero("#hero-opp", opp, snap.active === bossIdx, false, opp.leaderId || "raid_boss");
+    const allyBar = qs("#hero-ally");
+    const allyField = qs("#field-ally");
+    if (coop && ally) {
+      if (allyBar) {
+        allyBar.hidden = false;
+        renderHero("#hero-ally", ally, snap.active === (myIdx === 0 ? 1 : 0), false, ally.leaderId);
+      }
+      if (allyField) allyField.hidden = false;
+    } else {
+      if (allyBar) allyBar.hidden = true;
+      if (allyField) allyField.hidden = true;
+    }
+    updateDeckCount(myIdx);
+
+    if (prevActive !== snap.active && snap.winner == null && !opts.skipBanner) {
+      if (snap.active === myIdx) showTurnBanner((hotseat ? seatLabel(myIdx) + " — " : "") + "Your turn");
+      else if (coop && snap.active === 1 && !hotseat) showTurnBanner("Ally", true);
+      else if (coop && snap.active === 2) showTurnBanner("Boss", true);
+      else if (snap.active !== myIdx) showTurnBanner("Opponent", true);
+    }
+    prevActive = snap.active;
+
+    const newBoardIds = new Set();
+    renderField(me, opp, newBoardIds, ally);
+    knownBoardIds = newBoardIds;
+
+    const canAct =
+      snap.phase === "main" &&
+      snap.winner == null &&
+      (hotseat ? snap.active === viewSeat : snap.active === 0);
+    const legal = canAct ? Engine.listLegalPlays(state) : [];
+    const playableIds = new Set(
+      legal.filter((a) => a.kind === "play_soldier" || a.kind === "play_order").map((a) => a.cardId)
+    );
+
+    const handEl = qs("#hand");
+    handEl.innerHTML = "";
+    for (const c of me.hand) {
+      const el = cardEl(c, { hand: true, playable: playableIds.has(c.instanceId) });
+      el.dataset.instanceId = c.instanceId;
+      bindHandCard(el, c, legal);
+      handEl.appendChild(el);
+    }
+
+    // Bind attackers
+    qsa(".card[data-attacker]").forEach((el) => {
+      el.addEventListener("click", (ev) => {
+        if (busy || drag) return;
+        ev.stopPropagation();
+        onAttackerClick(el.dataset.attacker, legal);
+      });
+    });
+
+    const hint = qs("#hint");
+    if (snap.winner != null) {
+      const youWin = snap.winner === 0;
+      hint.textContent = youWin ? "Victory — commander down!" : "Defeat — your HP hit 0.";
+      qs("#btn-end").disabled = true;
+    } else if (!canAct) {
+      hint.textContent = coop && snap.active === 1 && !hotseat ? "Ally…" : snap.active === bossIdx ? "Enemy…" : "Waiting…";
+      qs("#btn-end").disabled = true;
+    } else if (attackMode) {
+      hint.textContent = "Tap a highlighted target · tap empty to cancel";
+      qs("#btn-end").disabled = busy;
+    } else {
+      hint.textContent = "Drag or tap to play · tap glow to attack";
+      qs("#btn-end").disabled = busy;
+    }
+
+    const logEl = qs("#log");
+    if (logEl) {
+      logEl.innerHTML = snap.log
+        .slice()
+        .reverse()
+        .map((l) => `<div>${escapeHtml(l)}</div>`)
+        .join("");
+    }
+    qs("#seed-label").textContent = `seed ${snap.seed}`;
+    syncPowerBtn();
+
+    if (!opts.skipDrawAnim) {
+      prevHandIds = me.hand.map((c) => c.instanceId);
+    } else {
+      prevHandIds = me.hand.map((c) => c.instanceId);
+    }
+  }
+
+  function updateDeckCount(seat) {
+    if (!state) return;
+    const idx = seat != null ? seat : (hotseat ? viewSeat : 0);
+    const n = state.players[idx].deck.length;
+    const el = qs("#deck-count");
+    if (el) el.textContent = String(n);
+  }
+
+  function renderHero(sel, p, active, isYou, leaderId) {
+    const el = qs(sel);
+    if (!el) return;
+    el.className = `hero-bar ${p.faction}` + (active ? " active-turn" : "");
+    el.removeAttribute("data-hero-target");
+    const fname = p.leaderName || Engine.factionName(p.faction);
+    const hp = p.hp != null ? p.hp : p.life;
+    const portrait = Art
+      ? (Art.leaderPortraitSvg && leaderId
+          ? Art.leaderPortraitSvg(leaderId, "bronze")
+          : Art.portraitSvg(p.faction, isYou, leaderId))
+      : "";
+    el.innerHTML = `
+      <div class="hero-portrait portrait-frame">${portrait}</div>
+      <div class="hero-meta">
+        <div class="name">${isYou ? "You" : fname}</div>
+        <div class="meters">
+          <span class="hp">♥${hp}</span>
+          <span class="supply">⚡${p.supply}/${p.supplyMax}</span>
+          ${isYou ? "" : `<span>D${p.deckCount}</span>`}
+        </div>
+      </div>`;
+  }
+
+  function renderField(me, opp, newBoardIds, ally) {
+    const enemyRow = qs("#row-enemy");
+    const friendRow = qs("#row-friend");
+    const allyRow = qs("#row-ally");
+    if (!enemyRow || !friendRow) return;
+    enemyRow.innerHTML = "";
+    friendRow.innerHTML = "";
+    if (allyRow) allyRow.innerHTML = "";
+    enemyRow.classList.remove("drop-legal", "drop-illegal");
+    friendRow.classList.remove("drop-legal", "drop-illegal");
+
+    if (!opp.board.length) {
+      const empty = document.createElement("div");
+      empty.className = "field-empty";
+      empty.textContent = "No soldiers";
+      enemyRow.appendChild(empty);
+    }
+    for (const r of opp.board) {
+      const el = cardEl(r, { onBoard: true });
+      el.dataset.boardId = r.instanceId;
+      el.dataset.owner = "1";
+      newBoardIds.add(r.instanceId);
+      enemyRow.appendChild(el);
+    }
+
+    if (!me.board.length) {
+      const empty = document.createElement("div");
+      empty.className = "field-empty";
+      empty.textContent = "Drop soldiers here";
+      friendRow.appendChild(empty);
+    }
+    for (const r of me.board) {
+      const freshly = !knownBoardIds.has(r.instanceId);
+      const canAtk = r.canAttack && state.winner == null && (hotseat ? state.active === viewSeat : state.active === 0);
+      const el = cardEl(r, { onBoard: true, attacker: canAtk });
+      if (freshly) {
+        el.classList.add("slam-in");
+        if (FX) {
+          setTimeout(() => {
+            const rr = el.getBoundingClientRect();
+            FX.burst(rr.left + rr.width / 2, rr.top + rr.height / 2, r.faction === "black" ? "#6ec8ff" : "#ff6b5a", 12);
+            FX.shake(qs("#stage"), 280);
+          }, 40);
+        }
+        if (AudioFX) AudioFX.sfx.playCard();
+      }
+      el.dataset.boardId = r.instanceId;
+      el.dataset.owner = "0";
+      if (canAtk) el.dataset.attacker = r.instanceId;
+      newBoardIds.add(r.instanceId);
+      friendRow.appendChild(el);
+    }
+
+    if (ally && allyRow) {
+      if (!ally.board.length) {
+        const empty = document.createElement("div");
+        empty.className = "field-empty";
+        empty.textContent = "Ally ready";
+        allyRow.appendChild(empty);
+      }
+      for (const r of ally.board) {
+        const el = cardEl(r, { onBoard: true });
+        el.dataset.boardId = r.instanceId;
+        el.dataset.owner = "ally";
+        newBoardIds.add(r.instanceId);
+        allyRow.appendChild(el);
+      }
+    }
+
+  }
+
+  function cardArtSvg(c) {
+    if (Art && Art.cardArtSvg) return Art.cardArtSvg(c);
+    return "";
+  }
+
+  function cardEl(c, opts) {
+    opts = opts || {};
+    const el = document.createElement("div");
+    const fac = c.faction === "neutral" ? "" : c.faction;
+    const isGuard = (c.keywords || []).indexOf("guard") >= 0;
+    const rar = (window.HoldfastMeta && c.defId && window.HoldfastMeta.rarityOf(c.defId)) || ((c.cost || 0) >= 5 ? "rare" : "common");
+    const isRare = rar === "rare" || rar === "epic" || rar === "legendary";
+    el.className =
+      "card" +
+      (fac ? " " + fac : "") +
+      (isGuard ? " guard-card" : "") +
+      (isRare ? " rare-card" : "") +
+      (rar === "legendary" ? " legendary-card" : "") +
+      (opts.hand ? " hand-card" : "") +
+      (opts.playable ? " playable" : "") +
+      (opts.attacker ? " can-attack" : "");
+    const stats =
+      c.type === "order"
+        ? ""
+        : `<div class="stats"><span>${c.attack}</span><span>${c.health}♥</span></div>`;
+    el.innerHTML = `
+      <div class="cost-pip">${c.cost}</div>
+      ${isGuard ? `<div class="guard-pip">G</div>` : ""}
+      <div class="art">${cardArtSvg(c)}</div>
+      <div class="body">
+        <div class="cname">${escapeHtml(c.name)}</div>
+        <div class="ctype">${c.type}</div>
+        <div class="ctext">${escapeHtml(c.text)}</div>
+        ${stats}
+      </div>`;
+    return el;
+  }
+
+  function bindHandCard(el, card, legal) {
+    el.addEventListener("pointerdown", (ev) => {
+      if (busy || !state || state.winner != null) return;
+      if (hotseat) { if (state.active !== viewSeat) return; }
+      else if (state.active !== 0) return;
+      if (ev.button != null && ev.button !== 0) return;
+      clearHighlights();
+      const options = legal.filter(
+        (a) => (a.kind === "play_soldier" || a.kind === "play_order") && a.cardId === card.instanceId
+      );
+      if (!options.length) return;
+      ev.preventDefault();
+      try {
+        el.setPointerCapture(ev.pointerId);
+      } catch (_) {}
+      const ghost = el.cloneNode(true);
+      ghost.classList.add("drag-ghost");
+      ghost.style.left = ev.clientX + "px";
+      ghost.style.top = ev.clientY + "px";
+      document.body.appendChild(ghost);
+      el.classList.add("dragging-source");
+      drag = {
+        card,
+        options,
+        ghost,
+        startX: ev.clientX,
+        startY: ev.clientY,
+        moved: false,
+        sourceEl: el,
+        pointerId: ev.pointerId,
+      };
+      highlightDropZones(card, options, true);
+    });
+  }
+
+  function highlightDropZones(card, options, on) {
+    const row = qs("#row-friend");
+    if (row) row.classList.remove("drop-legal", "drop-illegal");
+    if (!on || !card) return;
+    if (card.type === "soldier") {
+      const can = options.some((o) => o.kind === "play_soldier");
+      if (row) row.classList.add(can ? "drop-legal" : "drop-illegal");
+    }
+  }
+
+  function onPointerMove(ev) {
+    if (!drag) return;
+    ev.preventDefault();
+    const dx = ev.clientX - drag.startX;
+    const dy = ev.clientY - drag.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 8) drag.moved = true;
+    drag.ghost.style.left = ev.clientX + "px";
+    drag.ghost.style.top = ev.clientY + "px";
+  }
+
+  function onPointerUp(ev) {
+    if (!drag) return;
+    const t = ev.target;
+    if (t && t.closest && t.closest("button, .modal, .faction-card")) {
+      cancelDrag();
+      return;
+    }
+    ev.preventDefault();
+    const d = drag;
+    const { card, options, ghost, moved } = d;
+    cancelDrag();
+
+    if (!moved) {
+      onHandClick(card, options);
+      return;
+    }
+
+    ghost.style.display = "none";
+    const under = document.elementFromPoint(ev.clientX, ev.clientY);
+    const dropRow = under && under.closest ? under.closest(".field-row.friend") : null;
+    if (dropRow && card.type === "soldier") {
+      const match = options.find((o) => o.kind === "play_soldier");
+      if (match) {
+        humanAct(match);
+        return;
+      }
+    }
+  }
+
+  function cancelDrag() {
+    if (!drag) return;
+    highlightDropZones(null, [], false);
+    if (drag.ghost && drag.ghost.parentNode) drag.ghost.parentNode.removeChild(drag.ghost);
+    if (drag.sourceEl) drag.sourceEl.classList.remove("dragging-source");
+    drag = null;
+  }
+
+  function onHandClick(card, options) {
+    if (busy || !state || state.active !== 0 || state.winner != null) return;
+    if (!options.length) return;
+
+    if (card.type === "soldier") {
+      const match = options.find((o) => o.kind === "play_soldier");
+      if (match) humanAct(match);
+      return;
+    }
+    // order
+    const needs = options.some((o) => o.target);
+    if (!needs) {
+      humanAct(options[0]);
+    } else {
+      showTargetPick(card, options);
+    }
+  }
+
+  async function onAttackerClick(attackerId, legal) {
+    if (busy || !state || state.active !== 0) return;
+    const options = legal.filter(
+      (a) =>
+        (a.kind === "attack_face" || a.kind === "attack_soldier") &&
+        a.attackerId === attackerId
+    );
+    if (!options.length) return;
+
+    // Re-tap same attacker cancels
+    if (attackMode && attackMode.attackerId === attackerId) {
+      clearHighlights();
+      render();
+      return;
+    }
+
+    clearHighlights();
+    attackMode = { attackerId, options };
+
+    if (options.length === 1) {
+      setPreview(Engine.previewAction(state, options[0]));
+      await animateAttackThenAct(options[0]);
+      return;
+    }
+
+    // Highlight targets on board + hero; also show picker with previews
+    highlightAttackTargets(options);
+    showAttackPick(options);
+  }
+
+  function highlightAttackTargets(options) {
+    for (const o of options) {
+      if (o.kind === "attack_face") {
+        const hero = qs("#hero-opp");
+        if (hero) {
+          hero.classList.add("target-hl");
+          hero.dataset.heroTarget = "1";
+          const once = async (ev) => {
+            ev.stopPropagation();
+            closeModal();
+            clearHighlights();
+            await animateAttackThenAct(o);
+          };
+          hero._hfOnce = once;
+          hero.addEventListener("click", once);
+        }
+      } else if (o.kind === "attack_soldier") {
+        const el = document.querySelector(`.card[data-board-id="${o.targetId}"]`);
+        if (el) {
+          el.classList.add("target-hl");
+          const once = async (ev) => {
+            ev.stopPropagation();
+            closeModal();
+            clearHighlights();
+            await animateAttackThenAct(o);
+          };
+          el._hfOnce = once;
+          el.addEventListener("click", once);
+        }
+      }
+    }
+    // Show combined preview of first option
+    if (options[0]) setPreview(Engine.previewAction(state, options[0]) + " · pick a target");
+  }
+
+  function clearAttackTargetHandlers() {
+    qsa(".card.target-hl, .hero-bar.target-hl").forEach((el) => {
+      if (el._hfOnce) {
+        el.removeEventListener("click", el._hfOnce);
+        el._hfOnce = null;
+      }
+    });
+  }
+
+  function showTargetPick(card, options) {
+    const modal = qs("#modal-target");
+    qs("#modal-title").textContent = `${card.name} — target`;
+    const list = qs("#target-list");
+    list.innerHTML = "";
+    // Also highlight legal board/hero targets
+    clearHighlights();
+    for (const o of options) {
+      if (o.target && o.target.type === "soldier") {
+        const el = document.querySelector(`.card[data-board-id="${o.target.id}"]`);
+        if (el) el.classList.add("target-hl");
+      }
+      if (o.target && o.target.type === "hero") {
+        const hero = qs("#hero-opp");
+        if (hero) hero.classList.add("target-hl");
+      }
+      const b = document.createElement("button");
+      const preview = Engine.previewAction(state, o);
+      b.innerHTML = `${escapeHtml(describeTarget(o.target))}<span class="preview-line">${escapeHtml(preview)}</span>`;
+      b.addEventListener("click", () => {
+        closeModal();
+        clearHighlights();
+        humanAct(o);
+      });
+      list.appendChild(b);
+    }
+    modal.classList.add("open");
+  }
+
+  function showAttackPick(options) {
+    const modal = qs("#modal-target");
+    qs("#modal-title").textContent = "Attack target";
+    const list = qs("#target-list");
+    list.innerHTML = "";
+    for (const o of options) {
+      const b = document.createElement("button");
+      const preview = Engine.previewAction(state, o);
+      let label;
+      if (o.kind === "attack_face") {
+        label = `Enemy commander (♥${state.players[1].hp})`;
+      } else {
+        const def = state.players[1].board.find((x) => x.instanceId === o.targetId);
+        label = def
+          ? `${def.name} (${def.attack}/${def.health})${(def.keywords || []).indexOf("guard") >= 0 ? " · Guard" : ""}`
+          : "Enemy soldier";
+      }
+      b.innerHTML = `${escapeHtml(label)}<span class="preview-line">${escapeHtml(preview)}</span>`;
+      b.addEventListener("click", async () => {
+        closeModal();
+        clearHighlights();
+        await animateAttackThenAct(o);
+      });
+      list.appendChild(b);
+    }
+    modal.classList.add("open");
+  }
+
+  function describeTarget(t) {
+    if (!t) return "No target";
+    if (t.type === "hero") return `Enemy commander (♥${state.players[1].hp})`;
+    if (t.type === "soldier") {
+      const owner = state.players[t.owner != null ? t.owner : 1];
+      const r = owner.board.find((x) => x.instanceId === t.id);
+      if (r) {
+        const g = (r.keywords || []).indexOf("guard") >= 0 ? " · Guard" : "";
+        return `${r.name} (${r.attack}/${r.health})${g}`;
+      }
+      return "Soldier";
+    }
+    return JSON.stringify(t);
+  }
+
+  function closeModal() {
+    const m = qs("#modal-target");
+    if (m) m.classList.remove("open");
+    highlightDropZones(null, [], false);
+    clearAttackTargetHandlers();
+  }
+
+  function showTurnBanner(text, opp) {
+    if (FX && FX.turnBanner) FX.turnBanner(text, !!opp);
+    const existing = document.querySelector(".turn-banner");
+    if (existing) existing.remove();
+    const b = document.createElement("div");
+    b.className = "turn-banner" + (opp ? " opp" : "");
+    b.textContent = text;
+    qs("#screen-game").appendChild(b);
+    if (AudioFX) AudioFX.sfx.turn();
+    setTimeout(() => b.remove(), 1100);
+  }
+
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  function deckRect() {
+    const pile = qs("#deck-pile");
+    return pile ? pile.getBoundingClientRect() : { left: 0, top: 0, width: 54, height: 78 };
+  }
+
+  function handTargetRect(index, total) {
+    const hand = qs("#hand");
+    const r = hand.getBoundingClientRect();
+    const slot = Math.min(index, Math.max(total - 1, 0));
+    const w = 68;
+    const spread = Math.min(r.width - w, total * (w - 10));
+    const start = r.left + (r.width - spread) / 2;
+    return {
+      left: start + slot * (spread / Math.max(total - 1, 1)),
+      top: r.top + 4,
+      width: w,
+      height: 96,
+    };
+  }
+
+  async function animateDrawToHand(card, isLast) {
+    updateDeckCount();
+    const from = deckRect();
+    const handLen = (qs("#hand").children.length || 0) + 1;
+    const to = handTargetRect(handLen - 1, handLen);
+    const fly = cardEl(card, { hand: true });
+    fly.classList.add("fly-card");
+    fly.style.left = from.left + "px";
+    fly.style.top = from.top + "px";
+    fly.style.width = from.width + "px";
+    fly.style.height = from.height + "px";
+    document.body.appendChild(fly);
+    void fly.offsetWidth;
+    fly.style.left = to.left + "px";
+    fly.style.top = to.top + "px";
+    fly.style.width = "68px";
+    fly.style.height = "96px";
+    fly.style.transform = "rotate(0deg)";
+    if (AudioFX) AudioFX.sfx.draw();
+    await sleep(400);
+    fly.remove();
+    if (!isLast) {
+      const el = cardEl(card, { hand: true });
+      el.dataset.instanceId = card.instanceId;
+      qs("#hand").appendChild(el);
+    }
+    updateDeckCount();
+  }
+
+  async function animateAttackThenAct(action) {
+    clearAttackTargetHandlers();
+    attackMode = null;
+    const atkEl = document.querySelector(`.card[data-attacker="${action.attackerId}"]`);
+    if (atkEl) {
+      let lx = 0;
+      let ly = -22;
+      if (action.kind === "attack_face") {
+        const opp = qs("#hero-opp").getBoundingClientRect();
+        const a = atkEl.getBoundingClientRect();
+        lx = (opp.left + opp.width / 2 - (a.left + a.width / 2)) * 0.35;
+        ly = (opp.top + opp.height / 2 - (a.top + a.height / 2)) * 0.45;
+      } else if (action.targetId) {
+        const defEl = document.querySelector(`.card[data-board-id="${action.targetId}"]`);
+        if (defEl) {
+          const d = defEl.getBoundingClientRect();
+          const a = atkEl.getBoundingClientRect();
+          lx = (d.left + d.width / 2 - (a.left + a.width / 2)) * 0.4;
+          ly = (d.top + d.height / 2 - (a.top + a.height / 2)) * 0.45;
+        } else {
+          ly = -28;
+        }
+      }
+      atkEl.style.setProperty("--lx", lx + "px");
+      atkEl.style.setProperty("--ly", ly + "px");
+      atkEl.classList.add("lunge");
+      if (AudioFX) AudioFX.sfx.attack();
+      await sleep(160);
+      const flash = document.createElement("div");
+      flash.className = "impact-flash";
+      if (action.kind === "attack_face") {
+        const hero = qs("#hero-opp");
+        hero.appendChild(flash);
+        if (FX) {
+          FX.shake(hero, 360);
+          FX.screenShake();
+          const hr = hero.getBoundingClientRect();
+          FX.hitSparks(hr.left + hr.width / 2, hr.top + hr.height / 2);
+          FX.burst(hr.left + hr.width / 2, hr.top + hr.height / 2, "#ff6b5a", 16);
+        } else {
+          hero.classList.add("shake");
+          setTimeout(() => hero.classList.remove("shake"), 320);
+        }
+        const hpEl = qs("#hero-opp .hp");
+        if (hpEl) hpEl.classList.add("flash");
+        setTimeout(() => { if (hpEl) hpEl.classList.remove("flash"); }, 320);
+      } else {
+        const defEl = document.querySelector(`.card[data-board-id="${action.targetId}"]`);
+        const parent = defEl || atkEl.parentElement;
+        parent.appendChild(flash);
+        if (FX) {
+          FX.shake(parent, 360);
+          FX.screenShake();
+          const r = (defEl || parent).getBoundingClientRect();
+          FX.hitSparks(r.left + r.width / 2, r.top + r.height / 2);
+          FX.burst(r.left + r.width / 2, r.top + r.height / 2, "#ffc14a", 14);
+        } else {
+          parent.classList.add("shake");
+          setTimeout(() => parent.classList.remove("shake"), 320);
+        }
+      }
+      setTimeout(() => flash.remove(), 360);
+      await sleep(120);
+      atkEl.classList.remove("lunge");
+    }
+    setPreview("");
+    await humanAct(action);
+  }
+
+  function captureBoardHp() {
+    const map = {};
+    if (!state) return map;
+    for (const pl of state.players) {
+      for (const u of pl.board) map[u.instanceId] = u.health;
+    }
+    return map;
+  }
+
+  function emitDamageFloaters(beforeHp, beforeBoard) {
+    if (!state || !FX) return;
+    for (let pid = 0; pid < 2; pid++) {
+      const now = state.players[pid].hp;
+      const was = beforeHp[pid];
+      if (now !== was) {
+        const hero = qs(pid === 0 ? "#hero-you" : "#hero-opp");
+        if (hero) {
+          const r = hero.getBoundingClientRect();
+          const d = now - was;
+          FX.floatText(r.left + r.width * 0.7, r.top, (d > 0 ? "+" : "") + d, d > 0 ? "heal" : "dmg");
+          if (AudioFX) (d > 0 ? AudioFX.sfx.heal : AudioFX.sfx.damage)();
+        }
+      }
+    }
+    // board deaths / damage
+    const nowBoard = captureBoardHp();
+    for (const id of Object.keys(beforeBoard)) {
+      if (nowBoard[id] == null) {
+        const el = document.querySelector(`.card[data-board-id="${id}"]`);
+        if (el && FX) {
+          if (AudioFX) AudioFX.sfx.death();
+          FX.death(el);
+        }
+      } else if (nowBoard[id] < beforeBoard[id]) {
+        const el = document.querySelector(`.card[data-board-id="${id}"]`);
+        if (el) {
+          const r = el.getBoundingClientRect();
+          FX.floatText(r.left + r.width / 2, r.top, String(nowBoard[id] - beforeBoard[id]), "dmg");
+        }
+      }
+    }
+  }
+
+  async function humanAct(action) {
+    if (busy || !state) return;
+    clearHighlights();
+    const activeBefore = state.active;
+    const handBefore = state.players[0].hand.map((c) => c.instanceId);
+    const deckBefore = state.players[0].deck.length;
+    const beforeHp = { 0: state.players[0].hp, 1: state.players[1].hp };
+    const beforeBoard = captureBoardHp();
+
+    if (action.kind === "play_order" && FX) {
+      const handCard = document.querySelector(`[data-instance-id="${action.cardId}"]`);
+      if (handCard) {
+        const a = handCard.getBoundingClientRect();
+        const stage = qs("#stage").getBoundingClientRect();
+        FX.spellTrail(a.left + a.width / 2, a.top + a.height / 2, stage.left + stage.width / 2, stage.top + stage.height / 2, "#6ec8ff");
+      }
+      if (AudioFX) AudioFX.sfx.playCard();
+    }
+
+    const res = Engine.applyAction(state, action);
+    if (!res.ok) {
+      qs("#hint").textContent = res.error || "Illegal";
+      return;
+    }
+
+    emitDamageFloaters(beforeHp, beforeBoard);
+
+    const handAfter = state.players[0].hand.map((c) => c.instanceId);
+    const drawn = state.players[0].hand.filter((c) => handBefore.indexOf(c.instanceId) < 0);
+
+    if (drawn.length && state.players[0].deck.length < deckBefore) {
+      busy = true;
+      render({ skipDrawAnim: true });
+      const handEl = qs("#hand");
+      for (const c of drawn) {
+        const node = handEl.querySelector(`[data-instance-id="${c.instanceId}"]`);
+        if (node) node.remove();
+      }
+      for (let i = 0; i < drawn.length; i++) {
+        await animateDrawToHand(drawn[i], i === drawn.length - 1);
+      }
+      busy = false;
+      render();
+    } else {
+      prevHandIds = handAfter;
+      render();
+    }
+
+    if (state.winner != null) {
+      const youWin = state.winner === 0;
+      if (FX) FX.victoryBanner(youWin);
+      if (AudioFX) (youWin ? AudioFX.sfx.win : AudioFX.sfx.lose)();
+      if (AudioFX) AudioFX.setMusicMode("menu");
+      if (window.HoldfastLobby && playerLeaderId) {
+        const r = window.HoldfastLobby.awardAndXp(youWin, playerLeaderId);
+        const hint = qs("#hint");
+        if (hint && r) hint.textContent += " · Leader XP → Lv " + r.after;
+      }
+      return;
+    }
+    if (state.active !== activeBefore) {
+      busy = true;
+      const next = state.active;
+      const isBoss = coopMode && next === 2;
+      const isAllyAi = coopMode && next === 1 && !hotseat;
+      const isOppAi = !coopMode && next === 1 && !hotseat;
+      const isHumanSeat = hotseat && (next === 0 || (coopMode && next === 1) || (!coopMode && next === 1));
+
+      const afterHandoff = () => {
+        if (isBoss || isAllyAi || isOppAi) {
+          showTurnBanner(isBoss ? "Boss" : isAllyAi ? "Ally" : (gameMode === "raid" ? "Boss" : "Opponent"), true);
+          setTimeout(() => runAiSeat(next), 500);
+        } else {
+          showTurnBanner(seatLabel(next), next !== viewSeat);
+          busy = false;
+          render();
+        }
+      };
+
+      if (hotseat && (next === 0 || next === 1) && !(coopMode && next === 2)) {
+        maybeHandoff(next).then(afterHandoff);
+      } else {
+        afterHandoff();
+      }
+      return;
+    }
+  }
+
+  function runAiSeat(seat) {
+    if (!state || state.winner != null) {
+      busy = false;
+      render();
+      return;
+    }
+    if (state.active !== seat) {
+      busy = false;
+      render();
+      return;
+    }
+    const beforeHp = { 0: state.players[0].hp, 1: state.players[1].hp };
+    if (state.players[2]) beforeHp[2] = state.players[2].hp;
+    const beforeBoard = captureBoardHp();
+    const diff = seat === 2 ? "hard" : seat === 1 && coopMode ? "normal" : aiDifficulty;
+    AI.takeFullTurn(state, seat, diff);
+    emitDamageFloaters(beforeHp, beforeBoard);
+    if (state.winner != null) {
+      const youWin = state.winner === 0;
+      if (FX) FX.victoryBanner(youWin);
+      if (AudioFX) (youWin ? AudioFX.sfx.win : AudioFX.sfx.lose)();
+      if (AudioFX) AudioFX.setMusicMode("menu");
+      if (window.HoldfastLobby && playerLeaderId) window.HoldfastLobby.awardAndXp(youWin, playerLeaderId);
+      busy = false;
+      render();
+      return;
+    }
+    // Chain to next AI seat or hand back to human
+    if (state.active !== 0 && !(hotseat && state.active === 1)) {
+      const next = state.active;
+      if (coopMode && (next === 1 || next === 2) && !(hotseat && next === 1)) {
+        setTimeout(() => runAiSeat(next), 450);
+        return;
+      }
+      if (!coopMode && next === 1) {
+        setTimeout(() => runAiSeat(1), 450);
+        return;
+      }
+    }
+    if (hotseat && state.active === 1 && coopMode) {
+      maybeHandoff(1).then(() => {
+        busy = false;
+        render();
+      });
+      return;
+    }
+    if (hotseat && state.active === 0) {
+      maybeHandoff(0).then(() => {
+        busy = false;
+        render();
+      });
+      return;
+    }
+    busy = false;
+    render();
+    if (state.active === 0) showTurnBanner("Your turn");
+  }
+
+  async function runOpponent() {
+    return runAiSeat(coopMode && state && state.active === 2 ? 2 : 1);
+  }
+
+  async function runOpponentLegacyUnused() {
+    if (!state || state.winner != null) {
+      busy = false;
+      render();
+      return;
+    }
+    if (state.active !== 1) {
+      busy = false;
+      render();
+      return;
+    }
+    const handBefore = state.players[0].hand.map((c) => c.instanceId);
+    const beforeHp = { 0: state.players[0].hp, 1: state.players[1].hp };
+    const beforeBoard = captureBoardHp();
+    AI.takeFullTurn(state, 1, aiDifficulty);
+    emitDamageFloaters(beforeHp, beforeBoard);
+    if (state.winner != null) {
+      const youWin = state.winner === 0;
+      if (FX) FX.victoryBanner(youWin);
+      if (AudioFX) (youWin ? AudioFX.sfx.win : AudioFX.sfx.lose)();
+      if (AudioFX) AudioFX.setMusicMode("menu");
+      if (window.HoldfastLobby && playerLeaderId) window.HoldfastLobby.awardAndXp(youWin, playerLeaderId);
+      busy = false;
+      render();
+      return;
+    }
+
+    const drawn = state.players[0].hand.filter((c) => handBefore.indexOf(c.instanceId) < 0);
+    if (drawn.length && state.active === 0) {
+      render({ skipDrawAnim: true, skipBanner: true });
+      showTurnBanner("Your turn");
+      const handEl = qs("#hand");
+      for (const c of drawn) {
+        const node = handEl.querySelector(`[data-instance-id="${c.instanceId}"]`);
+        if (node) node.remove();
+      }
+      updateDeckCount();
+      for (let i = 0; i < drawn.length; i++) {
+        await animateDrawToHand(drawn[i], i === drawn.length - 1);
+      }
+      busy = false;
+      prevHandIds = state.players[0].hand.map((c) => c.instanceId);
+      prevActive = 0;
+      render({ skipBanner: true });
+      return;
+    }
+    busy = false;
+    render();
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+
+</script>
+</body>
+</html>
